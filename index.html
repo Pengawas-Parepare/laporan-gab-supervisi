@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <style>
 :root{
   box-sizing:border-box;
@@ -138,7 +139,8 @@ label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink
       <label class="f">NIP observer<input id="mObsNip" type="text"></label>
     </div>
     <div class="toolbar" style="margin-top:16px">
-      <button class="btn" id="dlHtml">Unduh laporan (.html, buka di Word)</button>
+      <button class="btn" id="dlDocx">Unduh laporan (.docx, Word)</button>
+      <button class="btn ghost" id="dlHtml" hidden>Unduh laporan (.html)</button>
       <button class="btn ghost" id="dlCsv">Unduh rekap (.csv)</button>
       <button class="btn ghost" id="btnPrint">Cetak</button>
       <button class="btn ghost" id="btnReset">Mulai ulang</button>
@@ -558,6 +560,84 @@ function buildCsv(){
   });
   return "\uFEFF" + lines.join("\r\n");
 }
+
+/* ================= Ekspor Word (.docx) ================= */
+function buildDocx(){
+  var D = window.docx; if(!D) throw new Error("Pustaka Word belum termuat");
+  var root = document.createElement("div"); root.innerHTML = buildReport();
+  var F = "Times New Roman", out = [];
+  function runs(node, o){
+    o = o || {}; var res = [];
+    node.childNodes.forEach(function(c){
+      if(c.nodeType === 3){ if(c.textContent) res.push(new D.TextRun({ text: c.textContent.replace(/\s+/g," "), bold: o.b, size: o.sz, font: F })); }
+      else if(c.nodeType === 1){
+        if(c.tagName === "BR") res.push(new D.TextRun({ break: 1 }));
+        else res = res.concat(runs(c, { b: o.b || c.tagName === "B" || c.tagName === "STRONG", sz: o.sz }));
+      }
+    });
+    return res;
+  }
+  function para(el, o){
+    o = o || {};
+    return new D.Paragraph({ children: runs(el, { b: o.b, sz: o.sz }), alignment: o.al || D.AlignmentType.JUSTIFIED, spacing: { before: o.before || 0, after: o.after == null ? 120 : o.after }, heading: o.heading, numbering: o.num, keepNext: o.keepNext });
+  }
+  var bd = { style: D.BorderStyle.SINGLE, size: 4, color: "000000" };
+  var borders = { top: bd, bottom: bd, left: bd, right: bd };
+  function cellBar(td){
+    var inner = td.querySelector("td[bgcolor]");
+    if(!inner) return null;
+    var pct = parseInt(inner.getAttribute("width"), 10) || 0, col = (inner.getAttribute("bgcolor") || "#777").replace("#","");
+    return new D.Paragraph({ children: [new D.TextRun({ text: new Array(Math.max(1, Math.round(pct/5)) + 1).join("█"), color: col, size: 18, font: "Courier New" })] });
+  }
+  function table(t){
+    var mx = t.classList.contains("mx"), sz = mx ? 15 : 20, trs = Array.prototype.slice.call(t.rows);
+    var ncol = trs[0].cells.length;
+    var rows = trs.map(function(tr, ri){
+      return new D.TableRow({ tableHeader: ri === 0 && tr.parentNode.tagName === "THEAD", cantSplit: true, children: Array.prototype.map.call(tr.cells, function(td, ci){
+        var head = td.tagName === "TH", bar = cellBar(td);
+        var al = (mx && ci > 0) || head && /^(No|Prioritas)$/.test(td.textContent) || (!mx && /^\d+$/.test(td.textContent.trim()) && td.textContent.trim().length < 4) ? D.AlignmentType.CENTER : D.AlignmentType.LEFT;
+        return new D.TableCell({ borders: borders, margins: { top: 40, bottom: 40, left: 80, right: 80 },
+          shading: head ? { type: D.ShadingType.CLEAR, fill: "E9E9E9", color: "auto" } : undefined,
+          children: [bar || new D.Paragraph({ alignment: al, children: runs(td, { b: head, sz: sz }) })] });
+      }) });
+    });
+    return new D.Table({ rows: rows, width: { size: 100, type: D.WidthType.PERCENTAGE } });
+  }
+  function ttd(t){
+    var nb = { style: D.BorderStyle.NONE, size: 0, color: "FFFFFF" }, nbs = { top: nb, bottom: nb, left: nb, right: nb };
+    var rows = Array.prototype.map.call(t.rows, function(tr){
+      var sp = tr.classList.contains("sp");
+      return new D.TableRow({ children: [new D.TableCell({ borders: nbs, width: { size: 3600, type: D.WidthType.DXA }, children: [new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: sp ? 900 : 0 }, children: runs(tr.cells[0], {}) })] })] });
+    });
+    return new D.Table({ rows: rows, alignment: D.AlignmentType.RIGHT, width: { size: 3600, type: D.WidthType.DXA }, columnWidths: [3600], borders: { top: nb, bottom: nb, left: nb, right: nb, insideHorizontal: nb, insideVertical: nb } });
+  }
+  var olRef = 0, olCfg = [];
+  Array.prototype.forEach.call(root.children, function(el){
+    var tag = el.tagName;
+    if(tag === "H1") out.push(para(el, { b: true, sz: 28, al: D.AlignmentType.CENTER, after: 120 }));
+    else if(tag === "H2") out.push(para(el, { b: true, sz: 24, before: 280, after: 120, al: D.AlignmentType.LEFT, keepNext: true }));
+    else if(tag === "H3") out.push(para(el, { b: true, sz: 24, before: 200, after: 80, al: D.AlignmentType.LEFT, keepNext: true }));
+    else if(tag === "P") out.push(para(el, { sz: el.classList.contains("kecil") ? 20 : undefined, al: el.classList.contains("c") ? D.AlignmentType.CENTER : D.AlignmentType.JUSTIFIED }));
+    else if(tag === "OL" || tag === "UL"){
+      var ref = "ol" + (++olRef);
+      if(tag === "OL") olCfg.push({ reference: ref, levels: [{ level: 0, format: D.LevelFormat.DECIMAL, text: "%1.", alignment: D.AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 360 } } } }] });
+      Array.prototype.forEach.call(el.children, function(li){
+        out.push(para(li, tag === "OL" ? { num: { reference: ref, level: 0 }, after: 60 } : { after: 60 }));
+      });
+    }
+    else if(tag === "TABLE"){
+      if(el.classList.contains("ttd")) out.push(ttd(el)); else out.push(table(el));
+      out.push(new D.Paragraph({ spacing: { after: 120 }, children: [] }));
+    }
+  });
+  var doc = new D.Document({
+    creator: "Laporan Supervisi", title: "Laporan Konsolidasi Supervisi Pembelajaran Mendalam",
+    styles: { default: { document: { run: { font: F, size: 24 } } } },
+    numbering: { config: olCfg },
+    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children: out }]
+  });
+  return D.Packer.toBlob(doc);
+}
 function exportHtml(){
   var css = document.getElementById("reportCss").textContent;
   return '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Laporan Konsolidasi Supervisi Pembelajaran Mendalam</title><style>body{margin:0;background:#fff}' + css + '.sheet{box-shadow:none}</style></head><body><div class="sheet">' + buildReport() + "</div></body></html>";
@@ -651,7 +731,7 @@ async function saveFile(name, data){
   var note = $("#dlNote");
   if(!dlApi){
     var type = /\.csv$/.test(name) ? "text/csv;charset=utf-8" : "text/html;charset=utf-8";
-    var url = URL.createObjectURL(new Blob([data], { type: type }));
+    var url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type: type }));
     var a = document.createElement("a"); a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
@@ -665,13 +745,18 @@ async function saveFile(name, data){
     note.textContent = e && e.code === "declined" ? "Unduhan dibatalkan." : "Unduhan gagal" + (e && e.message ? ": " + e.message : ".") + " Coba tombol Cetak sebagai gantinya.";
   }
 }
+$("#dlDocx").addEventListener("click", async function(){
+  var note = $("#dlNote");
+  try{ note.hidden = true; await saveFile("laporan-konsolidasi-supervisi.docx", await buildDocx()); }
+  catch(e){ note.hidden = false; note.textContent = "Gagal membuat file Word" + (e && e.message ? ": " + e.message : ".") + " Coba tombol Cetak sebagai gantinya."; }
+});
 $("#dlHtml").addEventListener("click", function(){ saveFile("laporan-konsolidasi-supervisi.html", exportHtml()); });
 $("#dlCsv").addEventListener("click", function(){ saveFile("rekap-supervisi.csv", buildCsv()); });
 (async function(){
   try{
     if(window.claude && typeof window.claude.use === "function"){
       dlApi = await window.claude.use("downloads");
-      if(dlApi){ $("#dlHtml").hidden = false; $("#dlCsv").hidden = false; }
+      if(dlApi){ $("#dlHtml").hidden = false; }
     }
   }catch(e){ dlApi = null; }
 })();
