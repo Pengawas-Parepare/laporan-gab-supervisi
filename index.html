@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gabung Laporan Supervisi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#ECEFF3; --panel:#FFFFFF; --ink:#15202E; --muted:#566376; --line:#D3D9E1;
+  --accent:#0B5E8A; --accent-ink:#FFFFFF; --drop:#E3EBF2; --drop-hot:#CFE1EF;
+  --ok:#1B7F4B; --warn:#8F5B00; --bad:#B3261E; --chip:#EEF1F5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E141C; --panel:#17202B; --ink:#E5EAF1; --muted:#9AA7B9; --line:#2A3746;
+    --accent:#5DB2E8; --accent-ink:#06131D; --drop:#13202D; --drop-hot:#1B3347;
+    --ok:#4CC38A; --warn:#E3A93B; --bad:#FF8A80; --chip:#1F2B38;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E141C; --panel:#17202B; --ink:#E5EAF1; --muted:#9AA7B9; --line:#2A3746;
+  --accent:#5DB2E8; --accent-ink:#06131D; --drop:#13202D; --drop-hot:#1B3347;
+  --ok:#4CC38A; --warn:#E3A93B; --bad:#FF8A80; --chip:#1F2B38;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:40px 20px 80px}
+h1.app{font-size:clamp(28px,5vw,44px);line-height:1.08;letter-spacing:-.02em;font-weight:700;margin:0 0 10px;max-width:16em}
+.lead{color:var(--muted);margin:0 0 28px;max-width:46em}
+h2.step{font-size:20px;font-weight:700;margin:44px 0 12px;letter-spacing:-.01em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.drop{display:block;border:2px dashed var(--accent);background:var(--drop);border-radius:14px;padding:44px 24px;text-align:center;cursor:pointer;transition:background .15s}
+.drop:hover,.drop.hot,.drop:focus-within{background:var(--drop-hot)}
+.drop strong{display:block;font-size:22px;letter-spacing:-.01em;margin-bottom:6px}
+.drop span{color:var(--muted)}
+.btn{font:600 15px "Public Sans",sans-serif;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:10px 16px;border-radius:8px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:focus-visible,.drop:focus-within,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn[disabled]{opacity:.5;cursor:default}
+.files{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
+.files li{display:flex;gap:12px;align-items:baseline;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
+.files .nm{overflow-wrap:anywhere}
+.st{color:var(--muted);white-space:nowrap}
+.st.ok{color:var(--ok)} .st.err{color:var(--bad);white-space:normal;text-align:right}
+.note{color:var(--muted);font-size:14px;margin:10px 0 0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.rec{border-bottom:1px solid var(--line)}
+.rec:last-child{border-bottom:0}
+.rec>summary{cursor:pointer;padding:12px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 16px;list-style:none}
+.rec>summary::-webkit-details-marker{display:none}
+.rec .who{font-weight:600}
+.rec .sub{color:var(--muted);font-size:14px;grid-column:1}
+.rec .sc{grid-row:1/3;grid-column:2;text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;grid-column:1/3}
+.chip{font-size:12.5px;background:var(--chip);border-radius:999px;padding:2px 10px;color:var(--muted)}
+.chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)}
+.body{padding:4px 16px 16px;display:grid;gap:14px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label.f{display:grid;gap:3px;font-size:13px;color:var(--muted)}
+label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+.scores{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.scores label{display:grid;gap:2px;font-size:12px;color:var(--muted);text-align:center}
+.scores input{text-align:center;padding:6px 2px}
+.row-actions{display:flex;justify-content:flex-end}
+.meta{padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px;align-items:center}
+.desk{background:var(--bg);padding:0;overflow-x:auto}
+.empty{color:var(--muted);padding:18px 16px}
+/* ---------- Laporan (kertas) ---------- */
+.sheet{background:#fff;color:#000;max-width:794px;margin:0 auto;padding:56px 64px;font:12pt/1.45 "Times New Roman",Times,serif;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sheet h1{font-size:14pt;text-align:center;margin:0 0 6pt;line-height:1.3}
+.sheet h2{font-size:12pt;margin:18pt 0 6pt}
+.sheet h3{font-size:12pt;margin:12pt 0 4pt;font-weight:bold}
+.sheet p{margin:0 0 6pt;text-align:justify}
+.sheet p.c{text-align:center}
+.sheet ol,.sheet ul{margin:0 0 6pt;padding-left:22pt}
+.sheet li{margin:0 0 2pt;text-align:justify}
+.sheet table{border-collapse:collapse;width:100%;margin:4pt 0 10pt;font-size:10.5pt}
+.sheet th,.sheet td{border:1px solid #000;padding:3pt 5pt;vertical-align:top;text-align:left}
+.sheet th{background:#e9e9e9;font-weight:bold}
+.sheet td.n,.sheet th.n{text-align:center}
+.sheet table.mx{font-size:8.5pt}
+.sheet table.mx th,.sheet table.mx td{padding:2pt 2pt;text-align:center}
+.sheet table.mx td:first-child,.sheet table.mx th:first-child{text-align:left}
+.sheet .bar{font-family:"Courier New",monospace;font-size:9pt;letter-spacing:0;color:#777;white-space:nowrap}
+.sheet .bar.hi{color:#1f5fbf}
+.sheet table.ttd{border:0;width:auto;margin:18pt 0 0 auto}
+.sheet table.ttd td{border:0;text-align:center;padding:2pt 8pt}
+.sheet table.ttd tr.sp td{height:56pt}
+.sheet .kecil{font-size:10pt;color:#333}
+@media print{
+  body{background:#fff}
+  main>*:not(#reportWrap){display:none!important}
+  #reportWrap .toolbar,#reportWrap h2{display:none!important}
+  main{padding:0;max-width:none}
+  .sheet{box-shadow:none;padding:0;max-width:none}
+  @page{size:A4;margin:2cm}
+}
+@media (max-width:640px){.sheet{padding:28px 20px}}
+</style>
+</head>
+<body>
+<main>
+  <h1 class="app">Gabungkan laporan supervisi jadi satu laporan</h1>
+  <p class="lead">Unggah laporan supervisi pembelajaran mendalam dalam bentuk Word (.docx) atau PDF. Satu file boleh berisi banyak laporan. Semua dibaca di perangkat ini; tidak ada file yang dikirim ke server.</p>
+
+  <h2 class="step">1. Unggah laporan</h2>
+  <label class="drop" id="drop">
+    <input class="sr" type="file" id="file" multiple accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    <strong>Letakkan file di sini atau klik untuk memilih</strong>
+    <span>Word (.docx) dan PDF, boleh banyak sekaligus</span>
+  </label>
+  <p class="note">File Word lama berformat .doc belum bisa dibaca; simpan ulang sebagai .docx. PDF hasil pindai (gambar) tidak punya teks dan tidak bisa dibaca.</p>
+  <ul class="files" id="files"></ul>
+
+  <div id="reviewWrap" hidden>
+    <h2 class="step">2. Periksa hasil bacaan</h2>
+    <p class="note" style="margin:0 0 12px">Buka satu laporan untuk memperbaiki skor atau identitas. Laporan di bawah ikut berubah.</p>
+    <div class="panel" id="recs"></div>
+  </div>
+
+  <div id="reportWrap" hidden>
+    <h2 class="step">3. Laporan gabungan</h2>
+    <div class="panel meta" id="meta">
+      <label class="f">Tempat penandatanganan<input id="mTempat" type="text"></label>
+      <label class="f">Tanggal laporan<input id="mTanggal" type="text" placeholder="mis. 12 Oktober 2026"></label>
+      <label class="f">Wilayah atau gugus (opsional)<input id="mWilayah" type="text" placeholder="mis. Gugus 3 Kota Parepare"></label>
+      <label class="f">Nama observer<input id="mObs" type="text"></label>
+      <label class="f">NIP observer<input id="mObsNip" type="text"></label>
+    </div>
+    <div class="toolbar" style="margin-top:16px">
+      <button class="btn" id="dlHtml">Unduh laporan (.html, buka di Word)</button>
+      <button class="btn ghost" id="dlCsv">Unduh rekap (.csv)</button>
+      <button class="btn ghost" id="btnPrint">Cetak</button>
+      <button class="btn ghost" id="btnReset">Mulai ulang</button>
+    </div>
+    <p class="note" id="dlNote" hidden></p>
+    <div class="desk"><div class="sheet" id="sheet"></div></div>
+  </div>
+</main>
+
+<script>
+"use strict";
+/* ================= Konstanta ================= */
+var WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+var ASP = [
+ "Keselarasan dengan perencanaan","Keselarasan menuju profil lulusan","Praktik pedagogis","Lingkungan belajar",
+ "Kemitraan pembelajaran","Pemanfaatan digital","Langkah memuliakan","Pengalaman memahami",
+ "Pengalaman mengaplikasi","Pengalaman merefleksi","Prinsip pembelajaran mendalam","Akomodasi karakteristik murid",
+ "Asesmen untuk umpan balik","Asesmen ketercapaian tujuan","Asesmen berkriteria jelas"];
+var SARAN = [
+ "Pendampingan menyusun dan melaksanakan modul ajar sesuai alur awal, inti, dan penutup",
+ "Penguatan kegiatan yang mengarah pada dimensi profil lulusan (kerja sama, tanggung jawab, refleksi)",
+ "Latihan pertanyaan pemantik, diskusi kelompok, dan asesmen formatif",
+ "Penguatan suasana kelas yang aman dan kesempatan berpendapat bagi semua murid",
+ "Latihan diskusi dan presentasi kelompok serta observasi sejawat",
+ "Berbagi praktik penggunaan media dan sumber belajar digital antarguru",
+ "Pembiasaan bahasa santun, apresiasi, dan sikap menghargai perbedaan pendapat",
+ "Penyempurnaan kegiatan mengamati, bertanya, dan menjelaskan kembali konsep",
+ "Lokakarya tugas berbasis masalah, penerapan konsep dalam situasi nyata, dan produk sederhana",
+ "Pembiasaan refleksi di akhir pembelajaran: apa yang dipahami, kesulitan, dan langkah perbaikan",
+ "Pengaitan materi dengan kehidupan sehari-hari dan ruang bagi murid mengeksplorasi gagasan",
+ "Variasi metode dan sumber belajar serta bantuan sesuai kebutuhan murid",
+ "Latihan memberi umpan balik dan kesempatan bagi murid memperbaiki pekerjaannya",
+ "Penyusunan tugas dan penilaian proses serta hasil yang selaras dengan tujuan pembelajaran",
+ "Pelatihan menyusun indikator dan rubrik penilaian serta menyampaikannya kepada murid"];
+var KOMP = [
+ {k:"A", n:"Keselarasan", a:0, b:2},
+ {k:"B", n:"Implementasi Kerangka Pembelajaran", a:2, b:6},
+ {k:"C", n:"Langkah Pembelajaran", a:6, b:15}];
+var BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+var MONTHS = {januari:0,februari:1,maret:2,april:3,mei:4,juni:5,juli:6,agustus:7,september:8,oktober:9,november:10,desember:11};
+
+/* ================= Util ================= */
+var $ = function(s){ return document.querySelector(s); };
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function f1(v){ return v.toFixed(1).replace(".", ","); }
+function f2(v){ return v.toFixed(2).replace(".", ","); }
+function kat(v){ return v >= 91 ? "Sangat Baik" : v >= 81 ? "Baik" : v >= 71 ? "Cukup" : "Perlu Pembinaan"; }
+function sum(a){ return a.reduce(function(s,v){ return s + v; }, 0); }
+function joinList(a){ if(a.length <= 1) return a.join(""); return a.slice(0,-1).join(", ") + " dan " + a[a.length-1]; }
+function normKey(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+function schoolName(s){ var t = String(s||"").toUpperCase().replace(/UPTD/g,"").replace(/PAREPARE/g,"").replace(/\s+/g," ").trim(); return t || "(tanpa nama sekolah)"; }
+function parseTgl(s){
+  if(!s) return null;
+  var m = String(s).match(/(\d{1,2})\s*[-\/ ]\s*(\d{1,2}|[A-Za-z]+)\s*[-\/ ]\s*(\d{4})/);
+  if(!m) return null;
+  var mo = /^\d+$/.test(m[2]) ? +m[2] - 1 : MONTHS[m[2].toLowerCase()];
+  if(mo === undefined || isNaN(mo) || mo < 0 || mo > 11) return null;
+  return new Date(+m[3], mo, +m[1]);
+}
+function tglID(d){ return d.getDate() + " " + BULAN[d.getMonth()] + " " + d.getFullYear(); }
+function periode(recs){
+  var ds = recs.map(function(r){ return parseTgl(r.tanggal); }).filter(Boolean).sort(function(a,b){ return a - b; });
+  if(!ds.length) return "";
+  var a = ds[0], b = ds[ds.length-1];
+  if(a.getTime() === b.getTime()) return tglID(a);
+  if(a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) return a.getDate() + " – " + tglID(b);
+  if(a.getFullYear() === b.getFullYear()) return a.getDate() + " " + BULAN[a.getMonth()] + " – " + tglID(b);
+  return tglID(a) + " – " + tglID(b);
+}
+
+/* ================= Keadaan ================= */
+var state = { files: [], recs: [], meta: { tempat: "Parepare", tanggal: "", wilayah: "", observer: "", obsNip: "", touched: {} } };
+
+/* ================= Pembacaan file ================= */
+function readBuf(file){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(r.result); };
+    r.onerror = function(){ rej(new Error("File tidak bisa dibaca.")); };
+    r.readAsArrayBuffer(file);
+  });
+}
+async function pdfToText(buf){
+  var pdfjs = window.pdfjsLib;
+  if(!pdfjs) throw new Error("Pembaca PDF gagal dimuat. Muat ulang halaman lalu coba lagi.");
+  pdfjs.GlobalWorkerOptions.workerSrc = WORKER_URL;
+  var doc = await pdfjs.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
+  var out = [];
+  for(var p = 1; p <= doc.numPages; p++){
+    var page = await doc.getPage(p);
+    var tc = await page.getTextContent();
+    var rows = [];
+    tc.items.forEach(function(it){
+      if(!it.str || !it.str.length) return;
+      var x = it.transform[4], y = it.transform[5], row = null;
+      for(var i = 0; i < rows.length; i++){ if(Math.abs(rows[i].y - y) <= 3){ row = rows[i]; break; } }
+      if(!row){ row = { y: y, items: [] }; rows.push(row); }
+      row.items.push({ x: x, w: it.width, s: it.str });
+    });
+    rows.sort(function(a,b){ return b.y - a.y; });
+    rows.forEach(function(r){
+      r.items.sort(function(a,b){ return a.x - b.x; });
+      var s = "", end = null;
+      r.items.forEach(function(t){
+        if(end !== null && t.x - end > 1.5 && !/\s$/.test(s) && !/^\s/.test(t.s)) s += " ";
+        s += t.s; end = t.x + t.w;
+      });
+      s = s.replace(/\s+/g, " ").trim();
+      if(s && !/Laporan Hasil Supervisi Pembelajaran Mendalam \| Halaman \d+/.test(s)) out.push(s);
+    });
+  }
+  return out.join("\n");
+}
+async function docxToText(buf){
+  if(!window.mammoth) throw new Error("Pembaca Word gagal dimuat. Muat ulang halaman lalu coba lagi.");
+  var r = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+  var doc = new DOMParser().parseFromString(r.value, "text/html");
+  var lines = [];
+  function cellText(c){
+    var ps = Array.prototype.slice.call(c.querySelectorAll("p")).map(function(p){ return p.textContent.trim(); }).filter(Boolean);
+    return ps.length ? ps.join(" ") : c.textContent.trim();
+  }
+  Array.prototype.forEach.call(doc.body.children, function(n){
+    var t = n.tagName;
+    if(t === "TABLE"){
+      Array.prototype.forEach.call(n.querySelectorAll("tr"), function(tr){
+        lines.push(Array.prototype.map.call(tr.children, cellText).join("\t"));
+      });
+    } else if(t === "OL" || t === "UL"){
+      var i = 0;
+      Array.prototype.forEach.call(n.children, function(li){ i++; lines.push((t === "OL" ? i + ". " : "- ") + li.textContent.trim()); });
+    } else lines.push(n.textContent.trim());
+  });
+  return lines.map(function(l){ return l.replace(/[ \t]+/g, " ").trim(); }).filter(Boolean).join("\n");
+}
+function splitReports(txt){
+  var re = /LAPORAN HASIL SUPERVISI PEMBELAJARAN MENDALAM/g, idx = [], m;
+  while((m = re.exec(txt))) idx.push(m.index);
+  var chunks = idx.length ? idx.map(function(s,i){ return txt.slice(s, i + 1 < idx.length ? idx[i+1] : txt.length); }) : [txt];
+  return chunks.filter(function(c){ return /Nama Guru/i.test(c); });
+}
+function section(txt, a, b){
+  var i = txt.search(a); if(i < 0) return "";
+  var rest = txt.slice(i), j = b ? rest.slice(1).search(b) : -1;
+  return j < 0 ? rest : rest.slice(0, j + 1);
+}
+function collectItems(sec){
+  var items = [];
+  sec.split("\n").slice(1).forEach(function(ln){
+    var m = ln.match(/^(?:\d+\.|[-•])\s+(.+)$/);
+    if(m) items.push(m[1].trim());
+    else if(items.length) items[items.length-1] += " " + ln.trim();
+  });
+  return items;
+}
+function parseReport(txt, src){
+  var idSec = section(txt, /II\.\s*IDENTITAS/i, /III\.\s*HASIL/i) || txt.slice(0, 3000);
+  function fld(labels){
+    var m = idSec.match(new RegExp("^(?:" + labels + ")\\s*:?\\s*(.+)$", "im"));
+    return m ? m[1].replace(/^[:\s]+/, "").trim() : "";
+  }
+  var skor = []; for(var i = 0; i < 15; i++) skor.push(null);
+  var scoreSec = section(txt, /III\.\s*HASIL/i, /IV\.\s*BUKTI/i) || txt;
+  scoreSec.split("\n").forEach(function(ln){
+    var m = ln.match(/^(\d{1,2})\s.*?(Sangat Baik|Perlu Pembinaan|Baik|Cukup)\s+(\d)$/);
+    if(m){ var no = +m[1]; if(no >= 1 && no <= 15 && skor[no-1] === null) skor[no-1] = +m[3]; }
+  });
+  var mt = txt.match(/Jumlah Skor Perolehan\s+(\d+)/);
+  var ref = section(txt, /VI\.\s*REFLEKSI/i, /VII\.\s*KESIMPULAN/i);
+  var secA = section(ref, /A\.\s*Pelajaran/i, /B\.\s*Hal/i);
+  var secC = section(ref, /C\.\s*Rencana Tindak/i, null);
+  var rtl = []; var rm, rre = /perbaikan pada aspek\s+(\d+)/gi;
+  while((rm = rre.exec(secC))) rtl.push(+rm[1]);
+  var nips = []; var nm, nre = /NIP\.?\s*:?\s*([\d ]{10,})/g;
+  while((nm = nre.exec(txt))) nips.push(nm[1].trim());
+  return {
+    src: src, sekolah: fld("Nama Sekolah"), guru: fld("Nama Guru"), nip: fld("NIP"), mapel: fld("Mata Pelajaran"),
+    kelas: fld("Kelas\\/Semester"), tanggal: fld("Hari\\/Tanggal"), observer: fld("Observer|Supervisor|Pengawas"),
+    obsNip: nips.length > 1 ? nips[nips.length-1] : "", skor: skor, totalLaporan: mt ? +mt[1] : null,
+    praktik: collectItems(secA), rtl: rtl
+  };
+}
+async function handleFiles(list){
+  var arr = Array.prototype.slice.call(list);
+  for(var k = 0; k < arr.length; k++){
+    var file = arr[k], entry = { name: file.name, size: file.size, st: "Membaca…", cls: "" };
+    state.files.push(entry); renderFiles();
+    try{
+      var ext = (file.name.split(".").pop() || "").toLowerCase();
+      var buf = await readBuf(file), txt;
+      if(ext === "pdf") txt = await pdfToText(buf);
+      else if(ext === "docx") txt = await docxToText(buf);
+      else if(ext === "doc") throw new Error("Format .doc lama belum didukung. Simpan ulang sebagai .docx.");
+      else throw new Error("Format ." + ext + " tidak didukung. Gunakan .docx atau .pdf.");
+      var chunks = splitReports(txt);
+      if(!chunks.length) throw new Error(txt.trim().length < 50 ? "Tidak ada teks di file ini. Kemungkinan PDF hasil pindai." : "Tidak ditemukan laporan supervisi (kata \"Nama Guru\" tidak ada).");
+      var added = 0, skipped = 0;
+      chunks.forEach(function(c){
+        var r = parseReport(c, file.name);
+        var key = normKey(r.guru + r.tanggal + r.mapel + r.kelas);
+        if(state.recs.some(function(x){ return normKey(x.guru + x.tanggal + x.mapel + x.kelas) === key; })) skipped++;
+        else { state.recs.push(r); added++; }
+      });
+      entry.st = added + " laporan terbaca" + (skipped ? ", " + skipped + " duplikat dilewati" : "");
+      entry.cls = "ok";
+    }catch(e){
+      entry.st = e && e.message ? e.message : "Gagal membaca file."; entry.cls = "err";
+    }
+    renderFiles();
+  }
+  autoMeta(); renderAll();
+}
+
+/* ================= Analisis ================= */
+function recOK(r){ return r.skor.every(function(v){ return typeof v === "number" && isFinite(v) && v >= 0 && v <= 4; }); }
+function recWarn(r){
+  var w = [];
+  if(!recOK(r)){
+    var miss = []; r.skor.forEach(function(v,i){ if(!(typeof v === "number" && v >= 0 && v <= 4)) miss.push(i+1); });
+    w.push({ t: "Skor aspek " + miss.join(", ") + " belum terbaca", c: "bad" });
+  } else if(r.totalLaporan != null && r.totalLaporan !== sum(r.skor)){
+    w.push({ t: "Total di laporan asli " + r.totalLaporan + ", hasil hitung " + sum(r.skor), c: "warn" });
+  }
+  if(!r.guru) w.push({ t: "Nama guru kosong", c: "bad" });
+  if(!r.sekolah) w.push({ t: "Sekolah kosong", c: "warn" });
+  return w;
+}
+function mostCommon(vals){
+  var m = {}, best = "", n = 0;
+  vals.forEach(function(v){ if(!v) return; var k = normKey(v); if(!m[k]) m[k] = { v: v, n: 0 }; m[k].n++; if(m[k].n > n){ n = m[k].n; best = m[k].v; } });
+  return best;
+}
+function autoMeta(){
+  var m = state.meta;
+  if(!m.touched.observer) m.observer = mostCommon(state.recs.map(function(r){ return r.observer; }));
+  if(!m.touched.obsNip) m.obsNip = mostCommon(state.recs.map(function(r){ return r.obsNip; }));
+}
+function analyze(){
+  var ok = state.recs.filter(recOK);
+  if(!ok.length) return null;
+  var n = ok.length;
+  var rows = ok.map(function(r){
+    var A = sum(r.skor.slice(0,2)), B = sum(r.skor.slice(2,6)), C = sum(r.skor.slice(6,15)), t = A + B + C, nil = t / 60 * 100;
+    return { r: r, A: A, B: B, C: C, total: t, nilai: nil, kat: kat(nil) };
+  }).sort(function(a,b){ return b.total - a.total || String(a.r.guru).localeCompare(String(b.r.guru)); });
+  rows.forEach(function(x){ x.rank = 1 + rows.filter(function(y){ return y.total > x.total; }).length; });
+  var avg = [], dist = [], i;
+  for(i = 0; i < 15; i++){
+    avg.push(sum(ok.map(function(r){ return r.skor[i]; })) / n);
+    dist.push([0,1,2,3,4].map(function(v){ return ok.filter(function(r){ return r.skor[i] === v; }).length; }));
+  }
+  var totalAvg = sum(rows.map(function(x){ return x.total; })) / n;
+  var komp = KOMP.map(function(k){
+    var mx = (k.b - k.a) * 4, a = sum(ok.map(function(r){ return sum(r.skor.slice(k.a, k.b)); })) / n;
+    return { k: k.k, n: k.n, aspek: k.b - k.a, mx: mx, avg: a, pct: a / mx * 100 };
+  });
+  var cat = { "Sangat Baik": 0, "Baik": 0, "Cukup": 0, "Perlu Pembinaan": 0 };
+  rows.forEach(function(x){ cat[x.kat]++; });
+  var sch = {};
+  rows.forEach(function(x){ var k = schoolName(x.r.sekolah); (sch[k] = sch[k] || []).push(x); });
+  var schools = Object.keys(sch).map(function(k){
+    var a = sum(sch[k].map(function(x){ return x.total; })) / sch[k].length;
+    return { name: k, n: sch[k].length, avg: a, nilai: a / 60 * 100, kat: kat(a / 60 * 100) };
+  }).sort(function(a,b){ return b.avg - a.avg; });
+  var mp = {};
+  rows.forEach(function(x){
+    var m = String(x.r.mapel || "").trim(), l = m.toLowerCase();
+    var key = /pkn|pancasila/.test(l) ? "Pendidikan Pancasila/PKn" : (m || "(tanpa mata pelajaran)");
+    (mp[key] = mp[key] || []).push(x.total);
+  });
+  var mapel = Object.keys(mp).map(function(k){ return { name: k, n: mp[k].length, nilai: sum(mp[k]) / mp[k].length / 60 * 100 }; }).sort(function(a,b){ return b.n - a.n; });
+  var zeroCells = 0, zeroRecs = {};
+  ok.forEach(function(r){ r.skor.forEach(function(v,i){ if(v === 0){ zeroCells++; zeroRecs[r.guru] = (zeroRecs[r.guru] || []).concat(i+1); } }); });
+  var vecs = {};
+  ok.forEach(function(r){ var k = r.skor.join(","); (vecs[k] = vecs[k] || []).push(r); });
+  var dup = Object.keys(vecs).map(function(k){ return vecs[k]; }).filter(function(g){ return g.length > 1; });
+  var dates = ok.map(function(r){ return parseTgl(r.tanggal); }).filter(Boolean);
+  return { ok: ok, n: n, nAll: state.recs.length, rows: rows, avg: avg, dist: dist, totalAvg: totalAvg, nilai: totalAvg / 60 * 100,
+    komp: komp, cat: cat, schools: schools, mapel: mapel, zeroCells: zeroCells, zeroRecs: zeroRecs, dup: dup, periode: periode(ok), dates: dates };
+}
+function ordAspek(A){ return A.avg.map(function(v,i){ return { i: i, v: v }; }).sort(function(a,b){ return b.v - a.v || a.i - b.i; }); }
+function asp(i, v){ return "aspek " + (i+1) + " (" + ASP[i].toLowerCase() + (v != null ? ", " + f2(v) : "") + ")"; }
+
+/* ================= Penyusun laporan ================= */
+function tbl(head, rows, cls){
+  var h = "<table" + (cls ? ' class="' + cls + '"' : "") + "><thead><tr>" + head.map(function(c){ return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead><tbody>";
+  rows.forEach(function(r){ h += "<tr>" + r.map(function(c){ return "<td>" + (c && c.h != null ? c.h : esc(c)) + "</td>"; }).join("") + "</tr>"; });
+  return h + "</tbody></table>";
+}
+function buildReport(){
+  var A = analyze(); if(!A) return "";
+  var m = state.meta, h = [], order = ordAspek(A);
+  var obs = m.observer || "(nama observer)";
+  var guruWord = A.n + " guru";
+  h.push("<h1>LAPORAN KONSOLIDASI HASIL SUPERVISI PEMBELAJARAN MENDALAM<br>(DEEP LEARNING)</h1>");
+  h.push('<p class="c">' + (A.periode ? "Periode pelaksanaan: " + esc(A.periode) : "") + (m.wilayah ? "<br>" + esc(m.wilayah) : "") + "</p>");
+
+  h.push("<h2>I. PENDAHULUAN</h2>");
+  h.push("<h3>A. Latar Belakang</h3>");
+  h.push("<p>Supervisi pembelajaran adalah upaya pembinaan profesional untuk memastikan pembelajaran di kelas berjalan sesuai perencanaan dan menghadirkan pengalaman belajar yang bermakna bagi murid. Melalui supervisi, observer memperoleh gambaran objektif tentang praktik guru, mengenali praktik baik yang perlu dipertahankan, dan merumuskan langkah perbaikan.</p>");
+  h.push("<p>Pendekatan pembelajaran mendalam menekankan pengalaman belajar yang berkesadaran, bermakna, dan menggembirakan melalui tiga tahap: memahami, mengaplikasi, dan merefleksi. Pendekatan ini ditopang kerangka pembelajaran yang meliputi praktik pedagogis, lingkungan belajar, kemitraan pembelajaran, dan pemanfaatan digital.</p>");
+  h.push("<h3>B. Tujuan</h3><ol><li>memperoleh gambaran keselarasan antara perencanaan pembelajaran dan pelaksanaannya di kelas;</li><li>mengetahui implementasi kerangka pembelajaran mendalam;</li><li>menilai langkah pembelajaran yang memfasilitasi pengalaman belajar memuliakan, memahami, mengaplikasi, dan merefleksi, serta pelaksanaan asesmen;</li><li>merumuskan refleksi dan rencana tindak lanjut; dan</li><li>memberi gambaran gabungan seluruh guru yang disupervisi agar pembinaan dapat direncanakan per aspek dan per sekolah.</li></ol>");
+  h.push("<h3>C. Instrumen dan Metode</h3>");
+  h.push("<p>Supervisi dilakukan melalui observasi langsung di kelas dengan Instrumen Supervisi Pembelajaran Mendalam yang memuat 15 aspek pengamatan. Setiap aspek dinilai pada skala 1 sampai 4 (Perlu Pembinaan, Cukup, Baik, Sangat Baik); skor maksimal per guru 60. Nilai akhir = (skor perolehan ÷ skor maksimal) × 100.</p>");
+  h.push(tbl(["Kategori","Rentang nilai akhir"], [["Sangat Baik","91 ke atas"],["Baik","81 sampai kurang dari 91"],["Cukup","71 sampai kurang dari 81"],["Perlu Pembinaan","kurang dari 71"]]));
+  h.push("<h3>D. Ruang Lingkup</h3>");
+  h.push("<p>Laporan ini menggabungkan " + guruWord + " dari " + A.schools.length + " sekolah" + (A.periode ? ", dilaksanakan pada " + esc(A.periode) : "") + ". Data skor, identitas, refleksi, dan rencana tindak lanjut diambil dari laporan individual tanpa mengubah skor aslinya.</p>");
+
+  h.push("<h2>II. IDENTITAS PELAKSANAAN SUPERVISI</h2>");
+  var byDate = A.rows.slice().sort(function(a,b){
+    var da = parseTgl(a.r.tanggal), db = parseTgl(b.r.tanggal);
+    return (da ? da.getTime() : 9e15) - (db ? db.getTime() : 9e15) || schoolName(a.r.sekolah).localeCompare(schoolName(b.r.sekolah));
+  });
+  h.push(tbl(["No","Tanggal","Sekolah","Nama Guru","NIP","Mata Pelajaran","Kelas/ Smt"], byDate.map(function(x,i){
+    var d = parseTgl(x.r.tanggal);
+    return [String(i+1), d ? tglID(d) : x.r.tanggal, x.r.sekolah, x.r.guru, x.r.nip, x.r.mapel, x.r.kelas];
+  })));
+  h.push("<p>Observer: " + esc(obs) + (m.obsNip ? ", NIP " + esc(m.obsNip) : "") + ".</p>");
+
+  h.push("<h2>III. HASIL SUPERVISI</h2>");
+  var cats = ["Sangat Baik","Baik","Cukup","Perlu Pembinaan"].filter(function(c){ return A.cat[c]; }).map(function(c){ return A.cat[c] + " " + c; });
+  h.push("<p>Rata-rata skor " + guruWord + " adalah " + f1(A.totalAvg) + " dari 60 (nilai " + f1(A.nilai) + ", kategori " + kat(A.nilai) + "). Sebaran kategori: " + joinList(cats) + ".</p>");
+  h.push("<h3>A. Rekapitulasi Nilai per Guru</h3>");
+  h.push("<p class=\"kecil\">Urut dari nilai tertinggi. Komponen A (Keselarasan) maksimal 8, B (Implementasi Kerangka Pembelajaran) maksimal 16, C (Langkah Pembelajaran) maksimal 36.</p>");
+  h.push(tbl(["Rank","Nama Guru","Sekolah","A (8)","B (16)","C (36)","Total (60)","Nilai","Kategori"], A.rows.map(function(x){
+    return [String(x.rank), x.r.guru, schoolName(x.r.sekolah), String(x.A), String(x.B), String(x.C), String(x.total), f1(x.nilai), x.kat];
+  })));
+  h.push("<h3>B. Rekapitulasi per Komponen</h3>");
+  var kr = A.komp.map(function(k){ return [k.k + ". " + k.n, String(k.aspek), String(k.mx), f1(k.avg), f1(k.pct) + "%", kat(k.pct)]; });
+  kr.push(["Total", "15", "60", f1(A.totalAvg), f1(A.nilai) + "%", kat(A.nilai)]);
+  h.push(tbl(["Komponen","Jumlah aspek","Skor maksimal","Rata-rata skor","Persentase","Kategori"], kr));
+  h.push("<h3>C. Rekapitulasi per Sekolah</h3>");
+  h.push(tbl(["Sekolah","Jumlah guru","Rata-rata skor (maks 60)","Nilai rata-rata","Kategori"], A.schools.map(function(s){ return [s.name, String(s.n), f1(s.avg), f1(s.nilai), s.kat]; })));
+  h.push("<h3>D. Rata-rata Skor per Aspek</h3>");
+  h.push("<p class=\"kecil\">Skala 0 sampai 4. Batang biru menandai empat aspek dengan rata-rata terendah.</p>");
+  var low4 = order.slice(-4).map(function(o){ return o.i; });
+  h.push(tbl(["Aspek","Rata-rata","Grafik"], order.map(function(o){
+    var len = Math.round(o.v / 4 * 36), bar = new Array(len + 1).join("█");
+    return [(o.i + 1) + ". " + ASP[o.i], f2(o.v), { h: '<span class="bar' + (low4.indexOf(o.i) >= 0 ? " hi" : "") + '">' + bar + "</span>" }];
+  })));
+
+  h.push("<h2>IV. PEMBAHASAN</h2>");
+  var top3 = order.slice(0,3), low = order.slice(-4).reverse();
+  h.push("<p>Aspek terkuat adalah " + joinList(top3.map(function(o){ return asp(o.i, o.v); })) + ". Aspek terlemah adalah " + joinList(low.map(function(o){ return asp(o.i, o.v); })) + ".</p>");
+  var ks = A.komp.slice().sort(function(a,b){ return b.pct - a.pct; });
+  h.push("<p>Komponen terkuat adalah " + ks[0].n + " (" + f1(ks[0].pct) + "%) dan komponen terendah adalah " + ks[ks.length-1].n + " (" + f1(ks[ks.length-1].pct) + "%).</p>");
+  var no4 = []; A.dist.forEach(function(d,i){ if(d[4] === 0) no4.push(i+1); });
+  if(no4.length) h.push("<p>Tidak ada guru yang mencapai skor 4 pada aspek " + joinList(no4.map(function(x){ return x + " (" + ASP[x-1].toLowerCase() + ")"; })) + ".</p>");
+  if(A.zeroCells){
+    var zn = Object.keys(A.zeroRecs).length;
+    h.push("<p>Terdapat " + A.zeroCells + " skor 0 pada " + zn + " guru. Skor ini dihitung apa adanya; karena skala instrumen 1 sampai 4, maknanya perlu dipastikan (lihat Lampiran B).</p>");
+  }
+  var pp = A.rows.filter(function(x){ return x.kat === "Perlu Pembinaan"; });
+  h.push("<p>" + (pp.length ? "Guru berkategori Perlu Pembinaan: " + joinList(pp.map(function(x){ return x.r.guru + " (" + schoolName(x.r.sekolah) + ", nilai " + f1(x.nilai) + ")"; })) + "." : "Tidak ada guru berkategori Perlu Pembinaan.") + "</p>");
+  if(A.schools.length > 1){
+    var sp = A.schools.filter(function(s){ return s.kat === "Perlu Pembinaan"; });
+    h.push("<p>Sekolah dengan nilai rata-rata tertinggi: " + A.schools[0].name + " (" + f1(A.schools[0].nilai) + "). Terendah: " + A.schools[A.schools.length-1].name + " (" + f1(A.schools[A.schools.length-1].nilai) + ")." + (sp.length ? " Sekolah berkategori Perlu Pembinaan: " + joinList(sp.map(function(s){ return s.name; })) + "." : "") + "</p>");
+  }
+  if(A.mapel.length > 1) h.push("<p>Rata-rata nilai per mata pelajaran: " + joinList(A.mapel.map(function(x){ return x.name + " " + f1(x.nilai) + " (" + x.n + " guru)"; })) + ". Jumlah guru per mata pelajaran dapat berbeda jauh, sehingga perbandingan ini bersifat indikatif.</p>");
+
+  h.push("<h2>V. REFLEKSI DAN RENCANA TINDAK LANJUT</h2>");
+  h.push("<h3>A. Praktik Baik yang Dicatat</h3>");
+  var cnt = {}, lab = {};
+  A.ok.forEach(function(r){ var seen = {}; r.praktik.forEach(function(p){ var k = normKey(p); if(!k || seen[k]) return; seen[k] = 1; cnt[k] = (cnt[k] || 0) + 1; lab[k] = lab[k] || p; }); });
+  var pr = Object.keys(cnt).sort(function(a,b){ return cnt[b] - cnt[a]; }).slice(0,6);
+  if(pr.length) h.push("<ol>" + pr.map(function(k){ return "<li>" + esc(lab[k]) + " (" + cnt[k] + " guru)</li>"; }).join("") + "</ol>");
+  else h.push("<p>Laporan individual tidak memuat bagian pelajaran yang diperoleh yang dapat dibaca.</p>");
+  h.push("<h3>B. Rencana Tindak Lanjut Tertulis</h3>");
+  var withR = A.ok.filter(function(r){ return r.rtl.length; }), noR = A.ok.filter(function(r){ return !r.rtl.length; });
+  h.push("<p>" + withR.length + " dari " + A.n + " guru memiliki rencana tindak lanjut (RTL) tertulis." + (noR.length ? " Belum memiliki RTL: " + joinList(noR.map(function(r){ return r.guru; })) + "." : "") + "</p>");
+  h.push("<h3>C. Usulan RTL Gabungan</h3>");
+  h.push("<p class=\"kecil\">Disusun otomatis dari aspek berskor rata-rata terendah. Bentuk kegiatan dan jadwal perlu disepakati observer dan sekolah.</p>");
+  var rt = order.slice(-6).reverse().map(function(o, idx){
+    var below = A.ok.filter(function(r){ return r.skor[o.i] < 4; }).length;
+    var low01 = A.ok.filter(function(r){ return r.skor[o.i] <= 1; }).length;
+    var tut = A.ok.filter(function(r){ return r.skor[o.i] === 4; }).map(function(r){ return r.guru; }).slice(0,5);
+    var sas = below + " guru berskor di bawah 4" + (low01 ? "; " + low01 + " di antaranya berskor 0 atau 1" : "");
+    return [String(idx+1), "Aspek " + (o.i+1) + ": " + ASP[o.i] + " (rata-rata " + f2(o.v) + ")", sas, SARAN[o.i] + (tut.length ? ". Rekan sebaya (skor 4): " + tut.join(", ") : "")];
+  });
+  h.push(tbl(["Prioritas","Fokus perbaikan","Guru sasaran","Bentuk tindak lanjut"], rt));
+
+  h.push("<h2>VI. KESIMPULAN DAN REKOMENDASI</h2>");
+  h.push("<h3>A. Kesimpulan</h3>");
+  h.push("<p>Berdasarkan supervisi terhadap " + guruWord + " di " + A.schools.length + " sekolah" + (A.periode ? " pada " + esc(A.periode) : "") + ", pelaksanaan pembelajaran mendalam memperoleh rata-rata skor " + f1(A.totalAvg) + " dari 60 dengan nilai " + f1(A.nilai) + ", kategori " + kat(A.nilai) + ". Sebaran kategori: " + joinList(cats) + ".</p>");
+  h.push("<p>Komponen terkuat adalah " + ks[0].n + " (" + f1(ks[0].pct) + "%). Aspek yang paling perlu ditingkatkan adalah " + joinList(low.map(function(o){ return "aspek " + (o.i+1) + " (" + ASP[o.i].toLowerCase() + ")"; })) + ".</p>");
+  h.push("<h3>B. Rekomendasi</h3>");
+  var rec = [];
+  rec.push("Guru mempertahankan praktik yang sudah baik dan memprioritaskan perbaikan pada aspek yang belum mencapai skor maksimal sesuai RTL.");
+  rec.push("Observer dan pengawas melaksanakan pembinaan dan pendampingan berkelanjutan" + (pp.length ? ", dimulai dari " + joinList(pp.map(function(x){ return x.r.guru; })) : "") + " dan dari aspek berskor rata-rata terendah.");
+  if(noR.length) rec.push("Observer dan guru melengkapi RTL bagi " + noR.length + " guru yang belum memilikinya, dengan merujuk usulan RTL gabungan.");
+  rec.push("Sekolah membentuk atau mengaktifkan komunitas belajar dan observasi sejawat, termasuk lintas sekolah, dengan guru berskor 4 pada aspek tertentu sebagai rekan sebaya.");
+  var sPP = A.schools.filter(function(s){ return s.kat === "Perlu Pembinaan"; });
+  rec.push("Observer dan sekolah menjadwalkan supervisi ulang" + (sPP.length ? ", lebih dahulu di " + joinList(sPP.map(function(s){ return s.name; })) : "") + ", untuk memantau perkembangan.");
+  if(A.zeroCells) rec.push("Observer memastikan makna skor 0 dalam instrumen agar penilaian dapat dibandingkan secara adil pada supervisi berikutnya.");
+  h.push("<ol>" + rec.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("") + "</ol>");
+  h.push("<p>Demikian laporan konsolidasi hasil supervisi ini disusun untuk dipergunakan sebagaimana mestinya.</p>");
+  h.push('<table class="ttd"><tr><td>' + esc(m.tempat || "") + (m.tanggal ? ", " + esc(m.tanggal) : ", ......................") + '</td></tr><tr><td>Observer</td></tr><tr class="sp"><td></td></tr><tr><td><b>' + esc(obs) + "</b></td></tr>" + (m.obsNip ? "<tr><td>NIP " + esc(m.obsNip) + "</td></tr>" : "") + "</table>");
+
+  h.push("<h2>LAMPIRAN</h2>");
+  h.push("<h3>A. Matriks Skor per Aspek</h3>");
+  h.push("<p class=\"kecil\">Kolom 1 sampai 15 adalah nomor aspek (1–2 Keselarasan, 3–6 Implementasi Kerangka Pembelajaran, 7–15 Langkah Pembelajaran).</p>");
+  var hd = ["Guru"]; for(var q = 1; q <= 15; q++) hd.push(String(q)); hd.push("Total");
+  h.push(tbl(hd, A.rows.map(function(x){ return [x.r.guru].concat(x.r.skor.map(String), [String(x.total)]); }), "mx"));
+  h.push("<h3>B. Catatan Data</h3>");
+  var notes = [];
+  if(A.zeroCells) notes.push("Skor 0 di luar skala 1–4: " + A.zeroCells + " skor pada " + Object.keys(A.zeroRecs).length + " guru (" + Object.keys(A.zeroRecs).map(function(g){ return g + ": aspek " + A.zeroRecs[g].join(", "); }).join("; ") + "). Skor dihitung apa adanya; perlu dipastikan apakah 0 berarti tidak teramati atau salah catat.");
+  A.dup.forEach(function(g){ notes.push("Skor identik pada seluruh 15 aspek: " + g.map(function(r){ return r.guru + (r.mapel ? " (" + r.mapel + (r.kelas ? ", kelas " + r.kelas : "") + ")" : ""); }).join(" dan ") + ". Perlu dikonfirmasi bahwa keduanya diamati secara terpisah."); });
+  var mism = A.ok.filter(function(r){ return r.totalLaporan != null && r.totalLaporan !== sum(r.skor); });
+  if(mism.length) notes.push("Total di laporan asli berbeda dari hasil hitung: " + mism.map(function(r){ return r.guru + " (asli " + r.totalLaporan + ", hitung " + sum(r.skor) + ")"; }).join("; ") + ". Laporan ini memakai hasil hitung.");
+  var badNip = A.ok.filter(function(r){ var d = String(r.nip || "").replace(/\D/g, ""); return d.length !== 18; });
+  if(badNip.length) notes.push("NIP tidak 18 digit: " + badNip.map(function(r){ return r.guru + " (" + (r.nip || "kosong") + ")"; }).join("; ") + ". Disalin sesuai laporan asli.");
+  var obsKeys = {}; state.recs.forEach(function(r){ if(r.observer) obsKeys[normKey(r.observer)] = r.observer; });
+  if(Object.keys(obsKeys).length > 1) notes.push("Penulisan nama observer berbeda antarlaporan: " + Object.keys(obsKeys).map(function(k){ return obsKeys[k]; }).join("; ") + ". Laporan ini memakai nama pada isian observer di atas.");
+  var inc = state.recs.filter(function(r){ return !recOK(r); });
+  if(inc.length) notes.push(inc.length + " laporan tidak ikut dihitung karena skor belum lengkap: " + inc.map(function(r){ return r.guru || r.src; }).join("; ") + ".");
+  if(!notes.length) notes.push("Tidak ada catatan data.");
+  h.push("<ol>" + notes.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("") + "</ol>");
+  return h.join("\n");
+}
+function buildCsv(){
+  var A = analyze(); if(!A) return "";
+  var head = ["Peringkat","Nama Guru","NIP","Sekolah","Mata Pelajaran","Kelas/Semester","Tanggal"];
+  for(var i = 1; i <= 15; i++) head.push("Aspek " + i);
+  head = head.concat(["Komponen A","Komponen B","Komponen C","Total","Nilai","Kategori","RTL tertulis"]);
+  function q(v){ v = String(v == null ? "" : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var lines = [head.map(q).join(";")];
+  A.rows.forEach(function(x){
+    var r = x.r;
+    lines.push([x.rank, r.guru, r.nip, r.sekolah, r.mapel, r.kelas, r.tanggal].concat(r.skor, [x.A, x.B, x.C, x.total, f1(x.nilai), x.kat, r.rtl.length ? "Ada" : "Belum"]).map(q).join(";"));
+  });
+  return "\uFEFF" + lines.join("\r\n");
+}
+function exportHtml(){
+  var css = document.getElementById("reportCss").textContent;
+  return '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Laporan Konsolidasi Supervisi Pembelajaran Mendalam</title><style>body{margin:0;background:#fff}' + css + '.sheet{box-shadow:none}</style></head><body><div class="sheet">' + buildReport() + "</div></body></html>";
+}
+
+/* ================= Tampilan ================= */
+function renderFiles(){
+  var ul = $("#files"); ul.innerHTML = "";
+  state.files.forEach(function(f){
+    var li = document.createElement("li");
+    var a = document.createElement("span"); a.className = "nm"; a.textContent = f.name;
+    var b = document.createElement("span"); b.className = "st " + f.cls; b.textContent = f.st;
+    li.appendChild(a); li.appendChild(b); ul.appendChild(li);
+  });
+}
+function summaryHtml(r){
+  var ok = recOK(r), t = ok ? sum(r.skor) : null;
+  var w = recWarn(r).map(function(x){ return '<span class="chip ' + x.c + '">' + esc(x.t) + "</span>"; }).join("");
+  if(!r.rtl.length) w += '<span class="chip">RTL belum ada</span>';
+  return '<span class="who">' + esc(r.guru || "(tanpa nama)") + '</span><span class="sc">' + (ok ? "<b>" + t + "</b>/60 · " + f1(t/60*100) : "–") + '</span><span class="sub">' + esc(schoolName(r.sekolah)) + " · " + esc(r.mapel) + " " + esc(r.kelas) + '</span><span class="chips">' + w + "</span>";
+}
+function renderReview(){
+  var wrap = $("#recs"); wrap.innerHTML = "";
+  state.recs.forEach(function(r, i){
+    var d = document.createElement("details"); d.className = "rec"; d.dataset.i = i;
+    var s = document.createElement("summary"); s.innerHTML = summaryHtml(r); d.appendChild(s);
+    var b = document.createElement("div"); b.className = "body";
+    var fields = [["guru","Nama guru"],["nip","NIP"],["sekolah","Sekolah"],["mapel","Mata pelajaran"],["kelas","Kelas/semester"],["tanggal","Tanggal"]];
+    var fh = '<div class="fields">' + fields.map(function(f){ return '<label class="f">' + f[1] + '<input type="text" data-i="' + i + '" data-k="' + f[0] + '" value="' + esc(r[f[0]]) + '"></label>'; }).join("") + "</div>";
+    var sh = '<div class="scores">' + r.skor.map(function(v, j){ return '<label>Aspek ' + (j+1) + '<input type="number" min="0" max="4" step="1" inputmode="numeric" data-i="' + i + '" data-s="' + j + '" value="' + (v == null ? "" : v) + '"></label>'; }).join("") + "</div>";
+    b.innerHTML = fh + sh + '<div class="row-actions"><button class="btn ghost" data-del="' + i + '">Hapus laporan ini</button></div>';
+    d.appendChild(b); wrap.appendChild(d);
+  });
+}
+var reportTimer = null;
+function renderReport(){
+  clearTimeout(reportTimer);
+  reportTimer = setTimeout(function(){
+    var A = analyze();
+    $("#reportWrap").hidden = !A;
+    $("#sheet").innerHTML = A ? buildReport() : "";
+  }, 120);
+}
+function renderAll(){
+  $("#reviewWrap").hidden = !state.recs.length;
+  renderReview();
+  $("#mTempat").value = state.meta.tempat; $("#mTanggal").value = state.meta.tanggal; $("#mWilayah").value = state.meta.wilayah;
+  $("#mObs").value = state.meta.observer; $("#mObsNip").value = state.meta.obsNip;
+  var A = analyze();
+  $("#reportWrap").hidden = !A;
+  $("#sheet").innerHTML = A ? buildReport() : "";
+}
+
+/* ================= Peristiwa ================= */
+var drop = $("#drop"), fileInput = $("#file");
+fileInput.addEventListener("change", function(){ if(fileInput.files.length) handleFiles(fileInput.files); fileInput.value = ""; });
+["dragenter","dragover"].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("hot"); }); });
+["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("hot"); }); });
+drop.addEventListener("drop", function(e){ if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+$("#recs").addEventListener("input", function(e){
+  var t = e.target, i = t.dataset.i; if(i == null) return;
+  var r = state.recs[+i]; if(!r) return;
+  if(t.dataset.s != null){
+    var v = t.value === "" ? null : Math.round(Number(t.value));
+    r.skor[+t.dataset.s] = (v == null || isNaN(v)) ? null : v;
+  } else if(t.dataset.k) r[t.dataset.k] = t.value;
+  var d = t.closest("details"); d.querySelector("summary").innerHTML = summaryHtml(r);
+  autoMeta(); renderReport();
+});
+$("#recs").addEventListener("click", function(e){
+  var b = e.target.closest("[data-del]"); if(!b) return;
+  state.recs.splice(+b.dataset.del, 1); autoMeta(); renderAll();
+});
+[["mTempat","tempat"],["mTanggal","tanggal"],["mWilayah","wilayah"],["mObs","observer"],["mObsNip","obsNip"]].forEach(function(p){
+  $("#" + p[0]).addEventListener("input", function(e){
+    state.meta[p[1]] = e.target.value;
+    if(p[1] === "observer" || p[1] === "obsNip") state.meta.touched[p[1]] = true;
+    renderReport();
+  });
+});
+$("#btnPrint").addEventListener("click", function(){ try{ window.print(); }catch(e){} });
+$("#btnReset").addEventListener("click", function(){
+  state.files = []; state.recs = []; state.meta.touched = {}; state.meta.observer = ""; state.meta.obsNip = ""; state.meta.tanggal = ""; state.meta.wilayah = "";
+  renderFiles(); renderAll();
+});
+
+/* Unduhan (kemampuan viewer; bisa tidak tersedia) */
+var dlApi = null;
+async function saveFile(name, data){
+  var note = $("#dlNote");
+  if(!dlApi){
+    var type = /\.csv$/.test(name) ? "text/csv;charset=utf-8" : "text/html;charset=utf-8";
+    var url = URL.createObjectURL(new Blob([data], { type: type }));
+    var a = document.createElement("a"); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    return;
+  }
+  try{
+    await dlApi.save({ filename: name, data: data });
+    note.hidden = true;
+  }catch(e){
+    note.hidden = false;
+    note.textContent = e && e.code === "declined" ? "Unduhan dibatalkan." : "Unduhan gagal" + (e && e.message ? ": " + e.message : ".") + " Coba tombol Cetak sebagai gantinya.";
+  }
+}
+$("#dlHtml").addEventListener("click", function(){ saveFile("laporan-konsolidasi-supervisi.html", exportHtml()); });
+$("#dlCsv").addEventListener("click", function(){ saveFile("rekap-supervisi.csv", buildCsv()); });
+(async function(){
+  try{
+    if(window.claude && typeof window.claude.use === "function"){
+      dlApi = await window.claude.use("downloads");
+      if(dlApi){ $("#dlHtml").hidden = false; $("#dlCsv").hidden = false; }
+    }
+  }catch(e){ dlApi = null; }
+})();
+</script>
+<style id="reportCss">
+.sheet{background:#fff;color:#000;max-width:794px;margin:0 auto;padding:56px 64px;font:12pt/1.45 "Times New Roman",Times,serif}
+.sheet h1{font-size:14pt;text-align:center;margin:0 0 6pt;line-height:1.3}
+.sheet h2{font-size:12pt;margin:18pt 0 6pt}
+.sheet h3{font-size:12pt;margin:12pt 0 4pt;font-weight:bold}
+.sheet p{margin:0 0 6pt;text-align:justify}
+.sheet p.c{text-align:center}
+.sheet ol,.sheet ul{margin:0 0 6pt;padding-left:22pt}
+.sheet li{margin:0 0 2pt;text-align:justify}
+.sheet table{border-collapse:collapse;width:100%;margin:4pt 0 10pt;font-size:10.5pt}
+.sheet th,.sheet td{border:1px solid #000;padding:3pt 5pt;vertical-align:top;text-align:left}
+.sheet th{background:#e9e9e9;font-weight:bold}
+.sheet table.mx{font-size:8.5pt}
+.sheet table.mx th,.sheet table.mx td{padding:2pt 2pt;text-align:center}
+.sheet table.mx td:first-child,.sheet table.mx th:first-child{text-align:left}
+.sheet .bar{font-family:"Courier New",monospace;font-size:9pt;color:#777;white-space:nowrap}
+.sheet .bar.hi{color:#1f5fbf}
+.sheet table.ttd{border:0;width:auto;margin:18pt 0 0 auto}
+.sheet table.ttd td{border:0;text-align:center;padding:2pt 8pt}
+.sheet table.ttd tr.sp td{height:56pt}
+.sheet .kecil{font-size:10pt;color:#333}
+</style>
+</body>
+</html>
