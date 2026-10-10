@@ -186,6 +186,7 @@ function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(
 function f1(v){ return v.toFixed(1).replace(".", ","); }
 function f2(v){ return v.toFixed(2).replace(".", ","); }
 function kat(v){ return v >= 91 ? "Sangat Baik" : v >= 81 ? "Baik" : v >= 71 ? "Cukup" : "Perlu Pembinaan"; }
+function barColor(v){ return v >= 3.5 ? "#2E9E6B" : v >= 3 ? "#2F6FD0" : v >= 2 ? "#E8A23A" : "#D9534F"; }
 function sum(a){ return a.reduce(function(s,v){ return s + v; }, 0); }
 function joinList(a){ if(a.length <= 1) return a.join(""); return a.slice(0,-1).join(", ") + " dan " + a[a.length-1]; }
 function normKey(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
@@ -425,7 +426,7 @@ function asp(i, v){ return "aspek " + (i+1) + " (" + ASP[i].toLowerCase() + (v !
 /* ================= Penyusun laporan ================= */
 function tbl(head, rows, cls){
   var h = "<table" + (cls ? ' class="' + cls + '"' : "") + "><thead><tr>" + head.map(function(c){ return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead><tbody>";
-  rows.forEach(function(r){ h += "<tr>" + r.map(function(c){ return "<td>" + (c && c.h != null ? c.h : esc(c)) + "</td>"; }).join("") + "</tr>"; });
+  rows.forEach(function(r){ h += "<tr>" + r.map(function(c){ return "<td" + (c && c.s ? ' style="' + c.s + '"' : "") + ">" + (c && c.h != null ? c.h : esc(c)) + "</td>"; }).join("") + "</tr>"; });
   return h + "</tbody></table>";
 }
 function buildReport(){
@@ -473,11 +474,11 @@ function buildReport(){
   h.push("<h3>C. Rekapitulasi per Sekolah</h3>");
   h.push(tbl(["Sekolah","Jumlah guru","Rata-rata skor (maks 60)","Nilai rata-rata","Kategori"], A.schools.map(function(s){ return [s.name, String(s.n), f1(s.avg), f1(s.nilai), s.kat]; })));
   h.push("<h3>D. Rata-rata Skor per Aspek</h3>");
-  h.push("<p class=\"kecil\">Skala 0 sampai 4. Batang biru menandai empat aspek dengan rata-rata terendah.</p>");
+  h.push("<p class=\"kecil\">Skala 0 sampai 4. Warna batang: hijau 3,5 ke atas; biru 3,0 sampai 3,49; oranye 2,0 sampai 2,99; merah di bawah 2,0.</p>");
   var low4 = order.slice(-4).map(function(o){ return o.i; });
   h.push(tbl(["Aspek","Rata-rata","Grafik"], order.map(function(o){
-    var len = Math.round(o.v / 4 * 36), bar = new Array(len + 1).join("█");
-    return [(o.i + 1) + ". " + ASP[o.i], f2(o.v), { h: '<span class="bar' + (low4.indexOf(o.i) >= 0 ? " hi" : "") + '">' + bar + "</span>" }];
+    var pct = Math.max(2, Math.round(o.v / 4 * 100)), col = barColor(o.v);
+    return [(o.i + 1) + ". " + ASP[o.i], f2(o.v), { s: "width:52%", h: '<table style="width:100%;border:0;border-collapse:collapse;margin:0"><tr><td width="' + pct + '%" bgcolor="' + col + '" style="width:' + pct + '%;background:' + col + ';border:0;padding:0;height:12px;font-size:7pt;line-height:12px">&nbsp;</td><td style="border:0;padding:0;font-size:7pt">&nbsp;</td></tr></table>' }];
   })));
 
   h.push("<h2>IV. PEMBAHASAN</h2>");
@@ -489,7 +490,7 @@ function buildReport(){
   if(no4.length) h.push("<p>Tidak ada guru yang mencapai skor 4 pada aspek " + joinList(no4.map(function(x){ return x + " (" + ASP[x-1].toLowerCase() + ")"; })) + ".</p>");
   if(A.zeroCells){
     var zn = Object.keys(A.zeroRecs).length;
-    h.push("<p>Terdapat " + A.zeroCells + " skor 0 pada " + zn + " guru. Skor ini dihitung apa adanya; karena skala instrumen 1 sampai 4, maknanya perlu dipastikan (lihat Lampiran B).</p>");
+    h.push("<p>Terdapat " + A.zeroCells + " skor 0 pada " + zn + " guru. Skor ini dihitung apa adanya; karena skala instrumen 1 sampai 4, maknanya perlu dipastikan.</p>");
   }
   var pp = A.rows.filter(function(x){ return x.kat === "Perlu Pembinaan"; });
   h.push("<p>" + (pp.length ? "Guru berkategori Perlu Pembinaan: " + joinList(pp.map(function(x){ return x.r.guru + " (" + schoolName(x.r.sekolah) + ", nilai " + f1(x.nilai) + ")"; })) + "." : "Tidak ada guru berkategori Perlu Pembinaan.") + "</p>");
@@ -538,24 +539,10 @@ function buildReport(){
   h.push('<table class="ttd"><tr><td>' + esc(m.tempat || "") + (m.tanggal ? ", " + esc(m.tanggal) : ", ......................") + '</td></tr><tr><td>Observer</td></tr><tr class="sp"><td></td></tr><tr><td><b>' + esc(obs) + "</b></td></tr>" + (m.obsNip ? "<tr><td>NIP " + esc(m.obsNip) + "</td></tr>" : "") + "</table>");
 
   h.push("<h2>LAMPIRAN</h2>");
-  h.push("<h3>A. Matriks Skor per Aspek</h3>");
+  h.push("<h3>Matriks Skor per Aspek</h3>");
   h.push("<p class=\"kecil\">Kolom 1 sampai 15 adalah nomor aspek (1–2 Keselarasan, 3–6 Implementasi Kerangka Pembelajaran, 7–15 Langkah Pembelajaran).</p>");
   var hd = ["Guru"]; for(var q = 1; q <= 15; q++) hd.push(String(q)); hd.push("Total");
   h.push(tbl(hd, A.rows.map(function(x){ return [x.r.guru].concat(x.r.skor.map(String), [String(x.total)]); }), "mx"));
-  h.push("<h3>B. Catatan Data</h3>");
-  var notes = [];
-  if(A.zeroCells) notes.push("Skor 0 di luar skala 1–4: " + A.zeroCells + " skor pada " + Object.keys(A.zeroRecs).length + " guru (" + Object.keys(A.zeroRecs).map(function(g){ return g + ": aspek " + A.zeroRecs[g].join(", "); }).join("; ") + "). Skor dihitung apa adanya; perlu dipastikan apakah 0 berarti tidak teramati atau salah catat.");
-  A.dup.forEach(function(g){ notes.push("Skor identik pada seluruh 15 aspek: " + g.map(function(r){ return r.guru + (r.mapel ? " (" + r.mapel + (r.kelas ? ", kelas " + r.kelas : "") + ")" : ""); }).join(" dan ") + ". Perlu dikonfirmasi bahwa keduanya diamati secara terpisah."); });
-  var mism = A.ok.filter(function(r){ return r.totalLaporan != null && r.totalLaporan !== sum(r.skor); });
-  if(mism.length) notes.push("Total di laporan asli berbeda dari hasil hitung: " + mism.map(function(r){ return r.guru + " (asli " + r.totalLaporan + ", hitung " + sum(r.skor) + ")"; }).join("; ") + ". Laporan ini memakai hasil hitung.");
-  var badNip = A.ok.filter(function(r){ var d = String(r.nip || "").replace(/\D/g, ""); return d.length !== 18; });
-  if(badNip.length) notes.push("NIP tidak 18 digit: " + badNip.map(function(r){ return r.guru + " (" + (r.nip || "kosong") + ")"; }).join("; ") + ". Disalin sesuai laporan asli.");
-  var obsKeys = {}; state.recs.forEach(function(r){ if(r.observer) obsKeys[normKey(r.observer)] = r.observer; });
-  if(Object.keys(obsKeys).length > 1) notes.push("Penulisan nama observer berbeda antarlaporan: " + Object.keys(obsKeys).map(function(k){ return obsKeys[k]; }).join("; ") + ". Laporan ini memakai nama pada isian observer di atas.");
-  var inc = state.recs.filter(function(r){ return !recOK(r); });
-  if(inc.length) notes.push(inc.length + " laporan tidak ikut dihitung karena skor belum lengkap: " + inc.map(function(r){ return r.guru || r.src; }).join("; ") + ".");
-  if(!notes.length) notes.push("Tidak ada catatan data.");
-  h.push("<ol>" + notes.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("") + "</ol>");
   return h.join("\n");
 }
 function buildCsv(){
