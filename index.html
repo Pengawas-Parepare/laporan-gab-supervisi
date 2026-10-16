@@ -98,12 +98,20 @@ label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink
 .sheet table.ttd td{border:0;text-align:center;padding:2pt 8pt}
 .sheet table.ttd tr.sp td{height:56pt}
 .sheet .kecil{font-size:10pt;color:#333}
+.sheet .pb{height:0;border-top:1px dashed #999;margin:26pt 0;break-after:page;page-break-after:always}
+.sheet h1.sah{margin:0 0 12pt;letter-spacing:.04em}
+.sheet table.sah2,.sheet table.sah1{border:0;width:100%;margin:14pt 0 0;font-size:12pt}
+.sheet table.sah2 td,.sheet table.sah1 td{border:0;text-align:center;padding:2pt 8pt;width:50%}
+.sheet table.sah1 td{width:100%}
+.sheet table.sah2 tr.sp td,.sheet table.sah1 tr.sp td{height:64pt}
 @media print{
   body{background:#fff}
   main>*:not(#reportWrap){display:none!important}
-  #reportWrap .toolbar,#reportWrap h2{display:none!important}
+  #reportWrap .toolbar,#reportWrap h2,#reportWrap .meta,#reportWrap .note{display:none!important}
+  .desk{background:#fff!important;overflow:visible!important}
   main{padding:0;max-width:none}
   .sheet{box-shadow:none;padding:0;max-width:none}
+  .sheet .pb{border:0!important;margin:0!important}
   @page{size:A4;margin:2cm}
 }
 @media (max-width:640px){.sheet{padding:28px 20px}}
@@ -135,8 +143,18 @@ label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink
       <label class="f">Tempat penandatanganan<input id="mTempat" type="text"></label>
       <label class="f">Tanggal laporan<input id="mTanggal" type="text" placeholder="mis. 12 Oktober 2026"></label>
       <label class="f">Wilayah atau gugus (opsional)<input id="mWilayah" type="text" placeholder="mis. Gugus 3 Kota Parepare"></label>
-      <label class="f">Nama observer<input id="mObs" type="text"></label>
-      <label class="f">NIP observer<input id="mObsNip" type="text"></label>
+      <label class="f">Pengawas bersangkutan (nama)<input id="mObs" type="text"></label>
+      <label class="f">NIP pengawas<input id="mObsNip" type="text"></label>
+      <label class="f">Pangkat/golongan pengawas (opsional)<input id="mObsPkt" type="text" placeholder="mis. Pembina Tk. I / IV.b"></label>
+      <p class="note" style="grid-column:1/-1;margin:8px 0 0;color:var(--ink)"><b>Halaman pengesahan</b> <span style="color:var(--muted)">· nama Korwas dan Kepala Dinas tersimpan di perangkat ini, jadi tidak perlu diketik ulang.</span></p>
+      <label class="f" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="mSah" checked style="width:auto"> Sertakan halaman pengesahan di awal laporan</label>
+      <label class="f">Nama korwas (koordinator pengawas)<input id="mKorwas" type="text"></label>
+      <label class="f">NIP korwas<input id="mKorwasNip" type="text"></label>
+      <label class="f">Pangkat/golongan korwas (opsional)<input id="mKorwasPkt" type="text"></label>
+      <label class="f">Instansi kepala dinas<input id="mDinas" type="text"></label>
+      <label class="f">Nama Kepala Dinas<input id="mKadis" type="text"></label>
+      <label class="f">NIP Kepala Dinas<input id="mKadisNip" type="text"></label>
+      <label class="f">Pangkat/golongan Kepala Dinas (opsional)<input id="mKadisPkt" type="text"></label>
     </div>
     <div class="toolbar" style="margin-top:16px">
       <button class="btn" id="dlDocx">Unduh laporan (.docx, Word)</button>
@@ -213,7 +231,11 @@ function periode(recs){
 }
 
 /* ================= Keadaan ================= */
-var state = { files: [], recs: [], meta: { tempat: "Parepare", tanggal: "", wilayah: "", observer: "", obsNip: "", touched: {} } };
+var state = { files: [], recs: [], meta: { tempat: "Parepare", tanggal: "", wilayah: "", observer: "", obsNip: "", obsPkt: "", sah: true,
+  dinas: "Dinas Pendidikan dan Kebudayaan Kota Parepare", korwas: "", korwasNip: "", korwasPkt: "", kadis: "", kadisNip: "", kadisPkt: "", touched: {} } };
+var SAVEKEYS = ["tempat","dinas","korwas","korwasNip","korwasPkt","kadis","kadisNip","kadisPkt"];
+(function(){ try{ var s = JSON.parse(localStorage.getItem("lgs-meta") || "{}"); SAVEKEYS.forEach(function(k){ if(typeof s[k] === "string" && s[k]) state.meta[k] = s[k]; }); }catch(e){} })();
+function saveMeta(){ try{ var o = {}; SAVEKEYS.forEach(function(k){ o[k] = state.meta[k] || ""; }); localStorage.setItem("lgs-meta", JSON.stringify(o)); }catch(e){} }
 
 /* ================= Pembacaan file ================= */
 function readBuf(file){
@@ -431,11 +453,42 @@ function tbl(head, rows, cls){
   rows.forEach(function(r){ h += "<tr>" + r.map(function(c){ return "<td" + (c && c.s ? ' style="' + c.s + '"' : "") + ">" + (c && c.h != null ? c.h : esc(c)) + "</td>"; }).join("") + "</tr>"; });
   return h + "</tbody></table>";
 }
+function buildSah(A, m){
+  var tgl = esc(m.tempat || "") + (m.tanggal ? ", " + esc(m.tanggal) : ", ......................");
+  function nip(v){ return v ? "NIP. " + esc(v) : "NIP. ......................"; }
+  function nama(v, ph){ return "<b>" + (v ? esc(v) : ph) + "</b>"; }
+  function row(a, b){ return "<tr><td>" + a + "</td>" + (b != null ? "<td>" + b + "</td>" : "") + "</tr>"; }
+  var h = [];
+  h.push('<h1 class="sah">LEMBAR PENGESAHAN</h1>');
+  h.push('<p class="c"><b>LAPORAN KONSOLIDASI HASIL SUPERVISI PEMBELAJARAN MENDALAM<br>(DEEP LEARNING)</b></p>');
+  h.push('<p class="c">' + (A.periode ? "Periode pelaksanaan: " + esc(A.periode) : "") + (m.wilayah ? "<br>" + esc(m.wilayah) : "") + "</p>");
+  h.push("<p>Laporan konsolidasi ini memuat hasil supervisi pembelajaran mendalam terhadap " + A.n + " guru di " + A.schools.length + " sekolah" + (A.periode ? ", yang dilaksanakan pada " + esc(A.periode) : "") + ". Laporan telah diperiksa dan disahkan oleh pejabat yang bertanda tangan di bawah ini.</p>");
+  h.push('<table class="sah2">' + row("&nbsp;", tgl) + row("Diperiksa oleh,", "Disusun oleh,") + row("Koordinator Pengawas (Korwas)", "Pengawas Sekolah") +
+    '<tr class="sp"><td></td><td></td></tr>' + row(nama(m.korwas, "(nama korwas)"), nama(m.observer, "(nama pengawas)")) +
+    (m.obsPkt || m.korwasPkt ? row(esc(m.korwasPkt || ""), esc(m.obsPkt || "")) : "") + row(nip(m.korwasNip), nip(m.obsNip)) + "</table>");
+  h.push('<table class="sah1">' + row("Disahkan oleh,") + row("Kepala " + esc(m.dinas || "Dinas Pendidikan dan Kebudayaan")) +
+    '<tr class="sp"><td></td></tr>' + row(nama(m.kadis, "(nama kepala dinas)")) + (m.kadisPkt ? row(esc(m.kadisPkt)) : "") + row(nip(m.kadisNip)) + "</table>");
+  h.push('<div class="pb"></div>');
+  return h.join("\n");
+}
+function buildPengantar(A, m){
+  var tgl = esc(m.tempat || "") + (m.tanggal ? ", " + esc(m.tanggal) : ", ......................");
+  var h = [];
+  h.push('<h1 class="sah">KATA PENGANTAR</h1>');
+  h.push("<p>Puji syukur kami panjatkan ke hadirat Tuhan Yang Maha Esa atas terselesaikannya Laporan Konsolidasi Hasil Supervisi Pembelajaran Mendalam (Deep Learning) ini. Laporan ini memuat hasil supervisi terhadap " + A.n + " guru di " + A.schools.length + " sekolah" + (A.periode ? ", yang dilaksanakan pada " + esc(A.periode) : "") + (m.wilayah ? ", " + esc(m.wilayah) : "") + ".</p>");
+  h.push("<p>Supervisi dilakukan sebagai upaya pembinaan profesional agar pembelajaran di kelas semakin bermakna bagi murid. Laporan ini diharapkan menjadi bahan refleksi bagi guru dan kepala sekolah, serta dasar perencanaan pembinaan dan pendampingan berkelanjutan.</p>");
+  h.push("<p>Kami mengucapkan terima kasih kepada kepala sekolah dan para guru yang telah bersedia disupervisi, serta kepada semua pihak yang telah membantu pelaksanaan supervisi dan penyusunan laporan ini. Kritik dan saran yang membangun sangat kami harapkan demi penyempurnaan di masa mendatang.</p>");
+  h.push('<table class="ttd"><tr><td>' + tgl + '</td></tr><tr><td>Pengawas Sekolah</td></tr><tr class="sp"><td></td></tr><tr><td><b>' + (m.observer ? esc(m.observer) : "(nama pengawas)") + "</b></td></tr>" + (m.obsPkt ? "<tr><td>" + esc(m.obsPkt) + "</td></tr>" : "") + "<tr><td>" + (m.obsNip ? "NIP. " + esc(m.obsNip) : "NIP. ......................") + "</td></tr></table>");
+  h.push('<div class="pb"></div>');
+  return h.join("\n");
+}
 function buildReport(){
   var A = analyze(); if(!A) return "";
   var m = state.meta, h = [], order = ordAspek(A);
   var obs = m.observer || "(nama observer)";
   var guruWord = A.n + " guru";
+  if(m.sah !== false) h.push(buildSah(A, m));
+  h.push(buildPengantar(A, m));
   h.push("<h1>LAPORAN KONSOLIDASI HASIL SUPERVISI PEMBELAJARAN MENDALAM<br>(DEEP LEARNING)</h1>");
   h.push('<p class="c">' + (A.periode ? "Periode pelaksanaan: " + esc(A.periode) : "") + (m.wilayah ? "<br>" + esc(m.wilayah) : "") + "</p>");
 
@@ -611,6 +664,18 @@ function buildDocx(){
     });
     return new D.Table({ rows: rows, alignment: D.AlignmentType.RIGHT, width: { size: 3600, type: D.WidthType.DXA }, columnWidths: [3600], borders: { top: nb, bottom: nb, left: nb, right: nb, insideHorizontal: nb, insideVertical: nb } });
   }
+  function ttdN(t){
+    var nb = { style: D.BorderStyle.NONE, size: 0, color: "FFFFFF" }, nbs = { top: nb, bottom: nb, left: nb, right: nb };
+    var n = t.rows[0].cells.length, W = 9638, cw = Math.floor(W / n);
+    var rows = Array.prototype.map.call(t.rows, function(tr, ri){
+      var sp = tr.classList.contains("sp");
+      return new D.TableRow({ cantSplit: true, children: Array.prototype.map.call(tr.cells, function(td){
+        return new D.TableCell({ borders: nbs, width: { size: cw, type: D.WidthType.DXA }, children: [new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: sp ? 1000 : (ri === 0 ? 240 : 0), after: 0 }, children: runs(td, {}) })] });
+      }) });
+    });
+    var cws = []; for(var i = 0; i < n; i++) cws.push(cw);
+    return new D.Table({ rows: rows, width: { size: W, type: D.WidthType.DXA }, columnWidths: cws, borders: { top: nb, bottom: nb, left: nb, right: nb, insideHorizontal: nb, insideVertical: nb } });
+  }
   var olRef = 0, olCfg = [];
   Array.prototype.forEach.call(root.children, function(el){
     var tag = el.tagName;
@@ -625,8 +690,9 @@ function buildDocx(){
         out.push(para(li, tag === "OL" ? { num: { reference: ref, level: 0 }, after: 60 } : { after: 60 }));
       });
     }
+    else if(tag === "DIV" && el.classList.contains("pb")) out.push(new D.Paragraph({ children: [new D.PageBreak()] }));
     else if(tag === "TABLE"){
-      if(el.classList.contains("ttd")) out.push(ttd(el)); else out.push(table(el));
+      if(el.classList.contains("ttd")) out.push(ttd(el)); else if(el.classList.contains("sah2") || el.classList.contains("sah1")) out.push(ttdN(el)); else out.push(table(el));
       out.push(new D.Paragraph({ spacing: { after: 120 }, children: [] }));
     }
   });
@@ -686,6 +752,9 @@ function renderAll(){
   renderReview();
   $("#mTempat").value = state.meta.tempat; $("#mTanggal").value = state.meta.tanggal; $("#mWilayah").value = state.meta.wilayah;
   $("#mObs").value = state.meta.observer; $("#mObsNip").value = state.meta.obsNip;
+  $("#mObsPkt").value = state.meta.obsPkt; $("#mSah").checked = state.meta.sah !== false; $("#mDinas").value = state.meta.dinas;
+  $("#mKorwas").value = state.meta.korwas; $("#mKorwasNip").value = state.meta.korwasNip; $("#mKorwasPkt").value = state.meta.korwasPkt;
+  $("#mKadis").value = state.meta.kadis; $("#mKadisNip").value = state.meta.kadisNip; $("#mKadisPkt").value = state.meta.kadisPkt;
   var A = analyze();
   $("#reportWrap").hidden = !A;
   $("#sheet").innerHTML = A ? buildReport() : "";
@@ -712,13 +781,15 @@ $("#recs").addEventListener("click", function(e){
   var b = e.target.closest("[data-del]"); if(!b) return;
   state.recs.splice(+b.dataset.del, 1); autoMeta(); renderAll();
 });
-[["mTempat","tempat"],["mTanggal","tanggal"],["mWilayah","wilayah"],["mObs","observer"],["mObsNip","obsNip"]].forEach(function(p){
+[["mTempat","tempat"],["mTanggal","tanggal"],["mWilayah","wilayah"],["mObs","observer"],["mObsNip","obsNip"],["mObsPkt","obsPkt"],["mDinas","dinas"],["mKorwas","korwas"],["mKorwasNip","korwasNip"],["mKorwasPkt","korwasPkt"],["mKadis","kadis"],["mKadisNip","kadisNip"],["mKadisPkt","kadisPkt"]].forEach(function(p){
   $("#" + p[0]).addEventListener("input", function(e){
     state.meta[p[1]] = e.target.value;
     if(p[1] === "observer" || p[1] === "obsNip") state.meta.touched[p[1]] = true;
+    if(SAVEKEYS.indexOf(p[1]) >= 0) saveMeta();
     renderReport();
   });
 });
+$("#mSah").addEventListener("change", function(e){ state.meta.sah = e.target.checked; renderReport(); });
 $("#btnPrint").addEventListener("click", function(){ try{ window.print(); }catch(e){} });
 $("#btnReset").addEventListener("click", function(){
   state.files = []; state.recs = []; state.meta.touched = {}; state.meta.observer = ""; state.meta.obsNip = ""; state.meta.tanggal = ""; state.meta.wilayah = "";
@@ -782,6 +853,12 @@ $("#dlCsv").addEventListener("click", function(){ saveFile("rekap-supervisi.csv"
 .sheet table.ttd td{border:0;text-align:center;padding:2pt 8pt}
 .sheet table.ttd tr.sp td{height:56pt}
 .sheet .kecil{font-size:10pt;color:#333}
+.sheet .pb{height:0;border-top:1px dashed #999;margin:26pt 0;break-after:page;page-break-after:always}
+.sheet h1.sah{margin:0 0 12pt;letter-spacing:.04em}
+.sheet table.sah2,.sheet table.sah1{border:0;width:100%;margin:14pt 0 0;font-size:12pt}
+.sheet table.sah2 td,.sheet table.sah1 td{border:0;text-align:center;padding:2pt 8pt;width:50%}
+.sheet table.sah1 td{width:100%}
+.sheet table.sah2 tr.sp td,.sheet table.sah1 tr.sp td{height:64pt}
 </style>
 </body>
 </html>
