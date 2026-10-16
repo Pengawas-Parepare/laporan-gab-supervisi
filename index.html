@@ -409,7 +409,8 @@ function analyze(){
     var A = sum(r.skor.slice(0,2)), B = sum(r.skor.slice(2,6)), C = sum(r.skor.slice(6,15)), t = A + B + C, nil = t / 60 * 100;
     return { r: r, A: A, B: B, C: C, total: t, nilai: nil, kat: kat(nil) };
   }).sort(function(a,b){ return b.total - a.total || String(a.r.guru).localeCompare(String(b.r.guru)); });
-  rows.forEach(function(x){ x.rank = 1 + rows.filter(function(y){ return y.total > x.total; }).length; });
+  var distinctTotals = rows.map(function(y){ return y.total; }).filter(function(v, i, a){ return a.indexOf(v) === i; });
+  rows.forEach(function(x){ x.rank = 1 + distinctTotals.filter(function(v){ return v > x.total; }).length; });
   var avg = [], dist = [], i;
   for(i = 0; i < 15; i++){
     avg.push(sum(ok.map(function(r){ return r.skor[i]; })) / n);
