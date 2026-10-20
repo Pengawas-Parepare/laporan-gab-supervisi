@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gabung Laporan Supervisi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -68,6 +68,7 @@ h2.step{font-size:20px;font-weight:700;margin:44px 0 12px;letter-spacing:-.01em}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 label.f{display:grid;gap:3px;font-size:13px;color:var(--muted)}
 label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+.meta select{font:400 15px "Public Sans",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
 .scores{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
 .scores label{display:grid;gap:2px;font-size:12px;color:var(--muted);text-align:center}
 .scores input{text-align:center;padding:6px 2px}
@@ -112,7 +113,10 @@ label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink
   main{padding:0;max-width:none}
   .sheet{box-shadow:none;padding:0;max-width:none}
   .sheet .pb{border:0!important;margin:0!important}
+  .sheet .cover{margin:0!important;width:210mm;height:296.8mm;page:cover;break-after:page}
+  .sheet .cvpb{display:none!important}
   @page{size:A4;margin:2cm}
+  @page cover{margin:0}
 }
 @media (max-width:640px){.sheet{padding:28px 20px}}
 </style>
@@ -146,6 +150,14 @@ label.f input,.meta input{font:400 15px "Public Sans",sans-serif;color:var(--ink
       <label class="f">Pengawas bersangkutan (nama)<input id="mObs" type="text"></label>
       <label class="f">NIP pengawas<input id="mObsNip" type="text"></label>
       <label class="f">Pangkat/golongan pengawas (opsional)<input id="mObsPkt" type="text" placeholder="mis. Pembina Tk. I / IV.b"></label>
+      <p class="note" style="grid-column:1/-1;margin:8px 0 0;color:var(--ink)"><b>Sampul</b> <span style="color:var(--muted)">· tema, nama instansi, dan logo tersimpan di perangkat ini.</span></p>
+      <label class="f" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="mCov" checked style="width:auto"> Sertakan sampul di awal laporan</label>
+      <label class="f">Tema warna<select id="mTema"><option value="biru">Biru tua</option><option value="zamrud">Hijau zamrud</option><option value="marun">Marun</option><option value="gading">Gading</option></select></label>
+      <label class="f">Nama instansi di sampul<input id="mInstansi" type="text" placeholder="Otomatis: nama dinas"></label>
+      <label class="f">Periode di sampul (opsional)<input id="mCovPer" type="text" placeholder="Otomatis dari tanggal supervisi"></label>
+      <label class="f" style="grid-column:1/-1">Kalimat pengantar sampul (opsional)<input id="mCovTeks" type="text" placeholder="Otomatis: jumlah guru dan sekolah"></label>
+      <label class="f">Logo (PNG, JPG, atau SVG; opsional)<input id="mLogo" type="file" accept="image/*"></label>
+      <div style="display:flex;align-items:end"><button class="btn ghost" id="mLogoDel" type="button" hidden>Hapus logo</button></div>
       <p class="note" style="grid-column:1/-1;margin:8px 0 0;color:var(--ink)"><b>Halaman pengesahan</b> <span style="color:var(--muted)">· nama Korwas dan Kepala Dinas tersimpan di perangkat ini, jadi tidak perlu diketik ulang.</span></p>
       <label class="f" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="mSah" checked style="width:auto"> Sertakan halaman pengesahan di awal laporan</label>
       <label class="f">Nama korwas (koordinator pengawas)<input id="mKorwas" type="text"></label>
@@ -231,10 +243,12 @@ function periode(recs){
 }
 
 /* ================= Keadaan ================= */
-var state = { files: [], recs: [], meta: { tempat: "Parepare", tanggal: "", wilayah: "", observer: "", obsNip: "", obsPkt: "", sah: true,
+var state = { files: [], recs: [], meta: { tempat: "Parepare", tanggal: "", wilayah: "", observer: "", obsNip: "", obsPkt: "", sah: true, cov: true, tema: "biru", instansi: "", covPer: "", covTeks: "", logo: "", logoW: 0, logoH: 0,
   dinas: "Dinas Pendidikan dan Kebudayaan Kota Parepare", korwas: "", korwasNip: "", korwasPkt: "", kadis: "", kadisNip: "", kadisPkt: "", touched: {} } };
-var SAVEKEYS = ["tempat","dinas","korwas","korwasNip","korwasPkt","kadis","kadisNip","kadisPkt"];
+var SAVEKEYS = ["tema","instansi","covTeks","tempat","dinas","korwas","korwasNip","korwasPkt","kadis","kadisNip","kadisPkt"];
 (function(){ try{ var s = JSON.parse(localStorage.getItem("lgs-meta") || "{}"); SAVEKEYS.forEach(function(k){ if(typeof s[k] === "string" && s[k]) state.meta[k] = s[k]; }); }catch(e){} })();
+(function(){ try{ var s = JSON.parse(localStorage.getItem("lgs-logo") || "null"); if(s && s.d){ state.meta.logo = s.d; state.meta.logoW = s.w; state.meta.logoH = s.h; } }catch(e){} })();
+function saveLogo(){ try{ var m = state.meta; if(m.logo) localStorage.setItem("lgs-logo", JSON.stringify({ d: m.logo, w: m.logoW, h: m.logoH })); else localStorage.removeItem("lgs-logo"); }catch(e){} }
 function saveMeta(){ try{ var o = {}; SAVEKEYS.forEach(function(k){ o[k] = state.meta[k] || ""; }); localStorage.setItem("lgs-meta", JSON.stringify(o)); }catch(e){} }
 
 /* ================= Pembacaan file ================= */
@@ -483,11 +497,69 @@ function buildPengantar(A, m){
   h.push('<div class="pb"></div>');
   return h.join("\n");
 }
+var THEMES = {
+  biru:   { bg: "#0F2233", g: "#C9A24B", ink: "#F4EFE3", soft: "#D9D3C4" },
+  zamrud: { bg: "#0B2B26", g: "#CBA85A", ink: "#F2EEE2", soft: "#D3D6CB" },
+  marun:  { bg: "#3A0F1E", g: "#DDB878", ink: "#F6EEE6", soft: "#E0CFC8" },
+  gading: { bg: "#F7F3EA", g: "#8A6A1F", ink: "#1B2A38", soft: "#4A5560" }
+};
+function coverData(A, m){
+  return { th: THEMES[m.tema] || THEMES.biru,
+    inst: String(m.instansi || m.dinas || "").toUpperCase(),
+    teks: m.covTeks || ("Gambaran gabungan hasil supervisi terhadap " + A.n + " guru di " + A.schools.length + " sekolah, berdasarkan 15 aspek pengamatan."),
+    obs: m.observer || "(nama pengawas)",
+    wil: m.wilayah || m.tempat || "(wilayah)",
+    per: m.covPer || A.periode || "(periode)" };
+}
+function buildCover(A, m){
+  var c = coverData(A, m), t = c.th;
+  function cell(k, v){ return '<div><div class="ck">' + k + '</div><div class="cval">' + esc(v) + "</div></div>"; }
+  return '<div class="cover" style="--bg:' + t.bg + ";--g:" + t.g + ";--ink:" + t.ink + ";--soft:" + t.soft + '">' +
+    '<i class="r1"></i><i class="r2"></i><i class="r3"></i><i class="r4"></i><i class="fr1"></i><i class="fr2"></i>' +
+    '<div class="cin"><div class="ctop">' + (m.logo ? '<img class="clogo" alt="Logo" src="' + m.logo + '">' : "") + '<span class="cinst">' + esc(c.inst) + "</span></div>" +
+    '<div class="cmid"><div class="clab">Laporan Konsolidasi</div><div class="crule"></div><h1>Hasil Supervisi<br>Pembelajaran<br>Mendalam</h1><div class="csub">(Deep Learning)</div><p class="cdesc">' + esc(c.teks) + "</p></div>" +
+    '<div class="cbot"><div class="cline"></div><div class="cgrid">' + cell("Disusun oleh", c.obs) + cell("Wilayah", c.wil) + cell("Periode", c.per) + "</div></div></div></div>" +
+    '<div class="pb cvpb"></div>';
+}
+function coverSection(D, c){
+  var T = c.th, hex = function(v){ return v.replace("#", ""); };
+  var g = hex(T.g), ink = hex(T.ink), soft = hex(T.soft), bg = hex(T.bg);
+  var nb = { style: D.BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  var F1 = "Georgia", F2 = "Calibri";
+  function R(t, o){ var x = { text: t, font: F2 }; for(var k in o) x[k] = o[k]; return new D.TextRun(x); }
+  function P(runs, o){ o = o || {}; return new D.Paragraph({ children: runs, alignment: D.AlignmentType.LEFT, spacing: { before: o.b || 0, after: o.a || 0, line: o.line }, indent: o.ind, border: o.border }); }
+  var kids = [], m = state.meta;
+  if(m.logo){
+    try{
+      var bin = atob(m.logo.split(",")[1]), u = new Uint8Array(bin.length);
+      for(var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      kids.push(P([new D.ImageRun({ data: u, transformation: { width: 80, height: 80 }, type: "png" })]));
+    }catch(e){}
+  }
+  kids.push(P([R(c.inst, { color: soft, size: 22, characterSpacing: 60 })], { b: m.logo ? 160 : 0 }));
+  kids.push(P([R("LAPORAN KONSOLIDASI", { color: g, size: 24, bold: true, characterSpacing: 100 })], { b: 2000 }));
+  kids.push(P([R(" ", { size: 2 })], { b: 200, a: 300, ind: { right: 7800 }, border: { bottom: { style: D.BorderStyle.SINGLE, size: 6, color: g, space: 1 } } }));
+  kids.push(P([R("Hasil Supervisi", { font: F1, size: 76, color: ink }), R("Pembelajaran", { font: F1, size: 76, color: ink, break: 1 }), R("Mendalam", { font: F1, size: 76, color: ink, break: 1 })]));
+  kids.push(P([R("(Deep Learning)", { font: F1, size: 40, italics: true, color: g })], { b: 160 }));
+  kids.push(P([R(c.teks, { size: 24, color: soft })], { b: 360, ind: { right: 3200 }, line: 340 }));
+  kids.push(P([R(" ", { size: 2 })], { b: 1200, a: 300, border: { top: { style: D.BorderStyle.SINGLE, size: 4, color: g, space: 1 } } }));
+  [["DISUSUN OLEH", c.obs], ["WILAYAH", c.wil], ["PERIODE", c.per]].forEach(function(kv, i){
+    kids.push(P([R(kv[0], { color: g, size: 22, characterSpacing: 60 })], { b: i ? 240 : 0 }));
+    kids.push(P([R(kv[1], { color: ink, size: 28 })], { b: 40 }));
+  });
+  var cell = new D.TableCell({ children: kids, width: { size: 11906, type: D.WidthType.DXA }, verticalAlign: D.VerticalAlign.TOP,
+    shading: { type: D.ShadingType.CLEAR, fill: bg, color: "auto" }, margins: { top: 1400, bottom: 600, left: 1300, right: 1300 }, borders: { top: nb, bottom: nb, left: nb, right: nb } });
+  var table = new D.Table({ rows: [new D.TableRow({ height: { value: 16700, rule: D.HeightRule.EXACT }, children: [cell] })],
+    width: { size: 11906, type: D.WidthType.DXA }, columnWidths: [11906], borders: { top: nb, bottom: nb, left: nb, right: nb, insideHorizontal: nb, insideVertical: nb } });
+  var tail = new D.Paragraph({ spacing: { before: 0, after: 0, line: 20, lineRule: D.LineRuleType.EXACT }, children: [new D.TextRun({ text: "", size: 2 })] });
+  return { properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 0, bottom: 0, left: 0, right: 0, header: 0, footer: 0 } } }, children: [table, tail] };
+}
 function buildReport(){
   var A = analyze(); if(!A) return "";
   var m = state.meta, h = [], order = ordAspek(A);
   var obs = m.observer || "(nama observer)";
   var guruWord = A.n + " guru";
+  if(m.cov !== false) h.push(buildCover(A, m));
   if(m.sah !== false) h.push(buildSah(A, m));
   h.push(buildPengantar(A, m));
   h.push("<h1>LAPORAN KONSOLIDASI HASIL SUPERVISI PEMBELAJARAN MENDALAM<br>(DEEP LEARNING)</h1>");
@@ -680,6 +752,7 @@ function buildDocx(){
   var olRef = 0, olCfg = [];
   Array.prototype.forEach.call(root.children, function(el){
     var tag = el.tagName;
+    if(el.classList.contains("cover") || el.classList.contains("cvpb")) return;
     if(tag === "H1") out.push(para(el, { b: true, sz: 28, al: D.AlignmentType.CENTER, after: 120 }));
     else if(tag === "H2") out.push(para(el, { b: true, sz: 24, before: 280, after: 120, al: D.AlignmentType.LEFT, keepNext: true }));
     else if(tag === "H3") out.push(para(el, { b: true, sz: 24, before: 200, after: 80, al: D.AlignmentType.LEFT, keepNext: true }));
@@ -697,17 +770,20 @@ function buildDocx(){
       out.push(new D.Paragraph({ spacing: { after: 120 }, children: [] }));
     }
   });
+  var secs = [];
+  if(state.meta.cov !== false){ var A0 = analyze(); if(A0) secs.push(coverSection(D, coverData(A0, state.meta))); }
+  secs.push({ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children: out });
   var doc = new D.Document({
     creator: "Laporan Supervisi", title: "Laporan Konsolidasi Supervisi Pembelajaran Mendalam",
     styles: { default: { document: { run: { font: F, size: 24 } } } },
     numbering: { config: olCfg },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children: out }]
+    sections: secs
   });
   return D.Packer.toBlob(doc);
 }
 function exportHtml(){
   var css = document.getElementById("reportCss").textContent;
-  return '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Laporan Konsolidasi Supervisi Pembelajaran Mendalam</title><style>body{margin:0;background:#fff}' + css + '.sheet{box-shadow:none}</style></head><body><div class="sheet">' + buildReport() + "</div></body></html>";
+  return '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Laporan Konsolidasi Supervisi Pembelajaran Mendalam</title><style>body{margin:0;background:#fff}' + css + '.sheet{box-shadow:none}@media print{.sheet{padding:0}.sheet .cover{margin:0;width:210mm;height:296.8mm;page:cover;break-after:page}.sheet .cvpb{display:none}@page{size:A4;margin:2cm}@page cover{margin:0}}</style></head><body><div class="sheet">' + buildReport() + "</div></body></html>";
 }
 
 /* ================= Tampilan ================= */
@@ -756,6 +832,7 @@ function renderAll(){
   $("#mObsPkt").value = state.meta.obsPkt; $("#mSah").checked = state.meta.sah !== false; $("#mDinas").value = state.meta.dinas;
   $("#mKorwas").value = state.meta.korwas; $("#mKorwasNip").value = state.meta.korwasNip; $("#mKorwasPkt").value = state.meta.korwasPkt;
   $("#mKadis").value = state.meta.kadis; $("#mKadisNip").value = state.meta.kadisNip; $("#mKadisPkt").value = state.meta.kadisPkt;
+  $("#mCov").checked = state.meta.cov !== false; $("#mTema").value = state.meta.tema; $("#mInstansi").value = state.meta.instansi; $("#mCovPer").value = state.meta.covPer; $("#mCovTeks").value = state.meta.covTeks; $("#mLogoDel").hidden = !state.meta.logo;
   var A = analyze();
   $("#reportWrap").hidden = !A;
   $("#sheet").innerHTML = A ? buildReport() : "";
@@ -782,7 +859,7 @@ $("#recs").addEventListener("click", function(e){
   var b = e.target.closest("[data-del]"); if(!b) return;
   state.recs.splice(+b.dataset.del, 1); autoMeta(); renderAll();
 });
-[["mTempat","tempat"],["mTanggal","tanggal"],["mWilayah","wilayah"],["mObs","observer"],["mObsNip","obsNip"],["mObsPkt","obsPkt"],["mDinas","dinas"],["mKorwas","korwas"],["mKorwasNip","korwasNip"],["mKorwasPkt","korwasPkt"],["mKadis","kadis"],["mKadisNip","kadisNip"],["mKadisPkt","kadisPkt"]].forEach(function(p){
+[["mTema","tema"],["mInstansi","instansi"],["mCovPer","covPer"],["mCovTeks","covTeks"],["mTempat","tempat"],["mTanggal","tanggal"],["mWilayah","wilayah"],["mObs","observer"],["mObsNip","obsNip"],["mObsPkt","obsPkt"],["mDinas","dinas"],["mKorwas","korwas"],["mKorwasNip","korwasNip"],["mKorwasPkt","korwasPkt"],["mKadis","kadis"],["mKadisNip","kadisNip"],["mKadisPkt","kadisPkt"]].forEach(function(p){
   $("#" + p[0]).addEventListener("input", function(e){
     state.meta[p[1]] = e.target.value;
     if(p[1] === "observer" || p[1] === "obsNip") state.meta.touched[p[1]] = true;
@@ -791,6 +868,26 @@ $("#recs").addEventListener("click", function(e){
   });
 });
 $("#mSah").addEventListener("change", function(e){ state.meta.sah = e.target.checked; renderReport(); });
+$("#mCov").addEventListener("change", function(e){ state.meta.cov = e.target.checked; renderReport(); });
+$("#mLogo").addEventListener("change", function(e){
+  var f = e.target.files && e.target.files[0]; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    var im = new Image();
+    im.onload = function(){
+      var S = 240, c = document.createElement("canvas"); c.width = S; c.height = S;
+      var x = c.getContext("2d");
+      x.fillStyle = "#F7F4EC"; x.beginPath(); x.arc(S/2, S/2, S/2, 0, Math.PI * 2); x.fill();
+      var w = im.naturalWidth || im.width || S, h = im.naturalHeight || im.height || S, sc = 168 / Math.max(w, h);
+      x.drawImage(im, (S - w * sc) / 2, (S - h * sc) / 2, w * sc, h * sc);
+      state.meta.logo = c.toDataURL("image/png"); state.meta.logoW = S; state.meta.logoH = S;
+      saveLogo(); $("#mLogoDel").hidden = false; renderReport();
+    };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+});
+$("#mLogoDel").addEventListener("click", function(){ state.meta.logo = ""; state.meta.logoW = 0; state.meta.logoH = 0; saveLogo(); $("#mLogo").value = ""; $("#mLogoDel").hidden = true; renderReport(); });
 $("#btnPrint").addEventListener("click", function(){ try{ window.print(); }catch(e){} });
 $("#btnReset").addEventListener("click", function(){
   state.files = []; state.recs = []; state.meta.touched = {}; state.meta.observer = ""; state.meta.obsNip = ""; state.meta.tanggal = ""; state.meta.wilayah = "";
@@ -860,6 +957,31 @@ $("#dlCsv").addEventListener("click", function(){ saveFile("rekap-supervisi.csv"
 .sheet table.sah2 td,.sheet table.sah1 td{border:0;text-align:center;padding:2pt 8pt;width:50%}
 .sheet table.sah1 td{width:100%}
 .sheet table.sah2 tr.sp td,.sheet table.sah1 tr.sp td{height:64pt}
+.sheet .cover{position:relative;box-sizing:border-box;width:794px;height:1123px;margin:-56px -64px 0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Jost","Public Sans",Arial,sans-serif;text-align:left;line-height:1.4}
+.cover i{position:absolute;display:block;border-radius:50%;border:1px solid var(--g)}
+.cover .r1{left:320px;top:640px;width:760px;height:760px;opacity:.18}
+.cover .r2{left:400px;top:720px;width:600px;height:600px;opacity:.28}
+.cover .r3{left:480px;top:800px;width:440px;height:440px;opacity:.4}
+.cover .r4{left:560px;top:880px;width:280px;height:280px;border:0;background:var(--g);opacity:.12}
+.cover i.fr1{inset:28px;border-radius:0;opacity:.7}
+.cover i.fr2{inset:38px;border-radius:0;opacity:.25}
+.cover .cin{position:relative;height:100%;box-sizing:border-box;padding:92px 88px 84px;display:flex;flex-direction:column}
+.cover .ctop{display:flex;align-items:center;gap:20px;min-height:76px}
+.cover .clogo{width:76px;height:76px;display:block}
+.cover .cinst{font-size:16px;letter-spacing:.2em;color:var(--soft)}
+.cover .cmid{margin-top:auto}
+.cover .clab{font-size:16px;font-weight:500;letter-spacing:.34em;text-transform:uppercase;color:var(--g)}
+.cover .crule{width:72px;height:1px;background:var(--g);margin:26px 0 30px}
+.sheet .cover h1{margin:0;font-family:"Cormorant Garamond",Georgia,serif;font-weight:500;font-size:68px;line-height:1.06;text-align:left;letter-spacing:-.005em;color:var(--ink)}
+.cover .csub{margin-top:18px;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:34px;color:var(--g)}
+.sheet .cover p.cdesc{margin:34px 0 0;max-width:430px;font-size:17px;line-height:1.65;color:var(--soft);text-align:left}
+.cover .cbot{margin-top:auto;padding-top:56px}
+.cover .cline{height:1px;background:var(--g);opacity:.5;margin-bottom:24px}
+.cover .cgrid{display:flex;gap:36px}
+.cover .cgrid>div{flex:1}
+.cover .ck{font-size:16px;letter-spacing:.2em;text-transform:uppercase;color:var(--g)}
+.cover .cval{margin-top:8px;font-size:19px;line-height:1.4;overflow-wrap:anywhere}
+@media (max-width:640px){.sheet .cover{margin:-28px -20px 0}}
 </style>
 </body>
 </html>
